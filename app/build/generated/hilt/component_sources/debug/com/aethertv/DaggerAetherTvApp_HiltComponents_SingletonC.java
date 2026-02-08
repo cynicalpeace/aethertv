@@ -41,6 +41,7 @@ import com.aethertv.domain.usecase.GetChannelsUseCase;
 import com.aethertv.domain.usecase.GetEpgUseCase;
 import com.aethertv.domain.usecase.RefreshChannelsUseCase;
 import com.aethertv.domain.usecase.SearchChannelsUseCase;
+import com.aethertv.engine.AceStreamEngine;
 import com.aethertv.epg.EpgRefreshWorker;
 import com.aethertv.epg.EpgRefreshWorker_AssistedFactory;
 import com.aethertv.epg.XmltvParser;
@@ -545,7 +546,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.aethertv.ui.setup.FirstRunViewModel 
-          return (T) new FirstRunViewModel(singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get());
+          return (T) new FirstRunViewModel(singletonCImpl.aceStreamEngineProvider.get(), singletonCImpl.aceStreamEngineProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get());
 
           case 1: // com.aethertv.ui.guide.GuideViewModel 
           return (T) new GuideViewModel(viewModelCImpl.getEpgUseCase());
@@ -664,6 +665,8 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     private Provider<ScraperWorker_AssistedFactory> scraperWorker_AssistedFactoryProvider;
 
+    private Provider<AceStreamEngine> aceStreamEngineProvider;
+
     private Provider<ExoPlayer> provideExoPlayerProvider;
 
     private Provider<UpdateRepository> provideUpdateRepositoryProvider;
@@ -718,9 +721,10 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
       this.provideAceStreamEngineClientProvider = DoubleCheck.provider(new SwitchingProvider<AceStreamEngineClient>(singletonCImpl, 9));
       this.channelRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChannelRepositoryImpl>(singletonCImpl, 10));
       this.scraperWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<ScraperWorker_AssistedFactory>(singletonCImpl, 8));
-      this.provideExoPlayerProvider = DoubleCheck.provider(new SwitchingProvider<ExoPlayer>(singletonCImpl, 11));
-      this.provideUpdateRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<UpdateRepository>(singletonCImpl, 12));
-      this.streamVerifierProvider = DoubleCheck.provider(new SwitchingProvider<StreamVerifier>(singletonCImpl, 13));
+      this.aceStreamEngineProvider = DoubleCheck.provider(new SwitchingProvider<AceStreamEngine>(singletonCImpl, 11));
+      this.provideExoPlayerProvider = DoubleCheck.provider(new SwitchingProvider<ExoPlayer>(singletonCImpl, 12));
+      this.provideUpdateRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<UpdateRepository>(singletonCImpl, 13));
+      this.streamVerifierProvider = DoubleCheck.provider(new SwitchingProvider<StreamVerifier>(singletonCImpl, 14));
     }
 
     @Override
@@ -805,13 +809,16 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
           case 10: // com.aethertv.data.repository.ChannelRepositoryImpl 
           return (T) new ChannelRepositoryImpl(singletonCImpl.channelDao(), singletonCImpl.favoriteDao(), singletonCImpl.provideJsonProvider.get());
 
-          case 11: // androidx.media3.exoplayer.ExoPlayer 
+          case 11: // com.aethertv.engine.AceStreamEngine 
+          return (T) new AceStreamEngine(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideAceStreamEngineClientProvider.get());
+
+          case 12: // androidx.media3.exoplayer.ExoPlayer 
           return (T) PlayerModule_ProvideExoPlayerFactory.provideExoPlayer(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 12: // com.aethertv.data.repository.UpdateRepository 
+          case 13: // com.aethertv.data.repository.UpdateRepository 
           return (T) AppModule_ProvideUpdateRepositoryFactory.provideUpdateRepository(singletonCImpl.provideHttpClientProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 13: // com.aethertv.verification.StreamVerifier 
+          case 14: // com.aethertv.verification.StreamVerifier 
           return (T) new StreamVerifier(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideAceStreamEngineClientProvider.get());
 
           default: throw new AssertionError(id);

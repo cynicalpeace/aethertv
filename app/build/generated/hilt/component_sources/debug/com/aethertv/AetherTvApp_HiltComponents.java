@@ -3,6 +3,7 @@ package com.aethertv;
 import androidx.hilt.work.HiltWrapper_WorkerFactoryModule;
 import com.aethertv.di.AppModule;
 import com.aethertv.di.DatabaseModule;
+import com.aethertv.di.EngineModule;
 import com.aethertv.di.NetworkModule;
 import com.aethertv.di.PlayerModule;
 import com.aethertv.di.RepositoryModule;
@@ -144,6 +145,7 @@ public final class AetherTvApp_HiltComponents {
           AppModule.class,
           ApplicationContextModule.class,
           DatabaseModule.class,
+          EngineModule.class,
           EpgRefreshWorker_HiltModule.class,
           HiltWrapper_FragmentGetContextFix_FragmentGetContextFixModule.class,
           HiltWrapper_WorkerFactoryModule.class,

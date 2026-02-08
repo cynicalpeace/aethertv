@@ -83,10 +83,14 @@ fun FirstRunScreen(
                 )
                 SetupStep.SCANNING -> ScanningStep(
                     channelsFound = uiState.channelsFound,
-                    statusMessage = uiState.statusMessage
+                    statusMessage = uiState.statusMessage,
+                    engineInstalled = uiState.engineInstalled,
+                    onInstallEngine = { viewModel.openEngineInstall() },
+                    onContinueWithDemo = { viewModel.startScanning() }
                 )
                 SetupStep.COMPLETE -> CompleteStep(
-                    channelsFound = uiState.channelsFound
+                    channelsFound = uiState.channelsFound,
+                    engineInstalled = uiState.engineInstalled
                 )
             }
         }
@@ -168,61 +172,113 @@ private fun FeatureRow(emoji: String, text: String) {
 @Composable
 private fun ScanningStep(
     channelsFound: Int,
-    statusMessage: String
+    statusMessage: String,
+    engineInstalled: Boolean = true,
+    onInstallEngine: () -> Unit = {},
+    onContinueWithDemo: () -> Unit = {}
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text(
-            text = "🔍",
-            fontSize = 80.sp
-        )
-        
-        Text(
-            text = "Scanning for Channels",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
-            text = statusMessage,
-            color = Color.Gray,
-            fontSize = 16.sp
-        )
-        
-        AnimatedVisibility(
-            visible = channelsFound > 0,
-            enter = fadeIn()
-        ) {
+        if (!engineInstalled) {
+            // Engine not installed - show installation options
             Text(
-                text = "$channelsFound channels found",
-                color = Color(0xFF00B4D8),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.SemiBold
+                text = "📦",
+                fontSize = 80.sp
             )
-        }
-        
-        // Progress indicator
-        Box(
-            modifier = Modifier
-                .width(200.dp)
-                .height(4.dp)
-                .background(Color(0xFF333333), RoundedCornerShape(2.dp))
-        ) {
+            
+            Text(
+                text = "Streaming Engine Required",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = "AetherTV uses AceStream for P2P streaming.\nInstall it to access live channels.",
+                color = Color.Gray,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Can't use FocusableButton here due to scope, using Surface directly
+                Text(
+                    text = "Install from Play Store →",
+                    color = Color(0xFF00B4D8),
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .background(Color(0xFF1A1A1A), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                )
+                
+                Text(
+                    text = "or continue with demo channels",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+            }
+        } else {
+            // Normal scanning state
+            Text(
+                text = "🔍",
+                fontSize = 80.sp
+            )
+            
+            Text(
+                text = "Scanning for Channels",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = statusMessage,
+                color = Color.Gray,
+                fontSize = 16.sp
+            )
+            
+            AnimatedVisibility(
+                visible = channelsFound > 0,
+                enter = fadeIn()
+            ) {
+                Text(
+                    text = "$channelsFound channels found",
+                    color = Color(0xFF00B4D8),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            // Progress indicator
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
+                    .width(200.dp)
                     .height(4.dp)
-                    .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
-            )
+                    .background(Color(0xFF333333), RoundedCornerShape(2.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(4.dp)
+                        .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun CompleteStep(channelsFound: Int) {
+private fun CompleteStep(
+    channelsFound: Int,
+    engineInstalled: Boolean = true
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -248,6 +304,15 @@ private fun CompleteStep(channelsFound: Int) {
             color = Color(0xFF00B4D8),
             fontSize = 20.sp
         )
+        
+        if (!engineInstalled) {
+            Text(
+                text = "Install AceStream from Settings to access live channels",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+        }
         
         Text(
             text = "Starting AetherTV...",

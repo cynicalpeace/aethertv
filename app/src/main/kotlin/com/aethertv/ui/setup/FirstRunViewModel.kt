@@ -5,8 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.MockDataProvider
 import com.aethertv.data.preferences.SettingsDataStore
-import com.aethertv.data.remote.AceStreamEngineClient
 import com.aethertv.data.repository.ChannelRepository
+import com.aethertv.engine.AceStreamEngine
+import com.aethertv.engine.EngineChannel
+import com.aethertv.engine.InstallResult
+import com.aethertv.engine.StreamEngine
+import com.aethertv.data.remote.AceStreamChannel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,17 +18,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.seconds
 
 data class FirstRunUiState(
     val step: SetupStep = SetupStep.WELCOME,
     val channelsFound: Int = 0,
     val statusMessage: String = "",
+    val engineInstalled: Boolean = true,
+    val engineInfo: String = "",
 )
 
 @HiltViewModel
 class FirstRunViewModel @Inject constructor(
-    private val aceStreamClient: AceStreamEngineClient,
+    private val streamEngine: StreamEngine,
+    private val aceStreamEngine: AceStreamEngine, // For install helpers
     private val channelRepository: ChannelRepository,
     private val settingsDataStore: SettingsDataStore,
 ) : ViewModel() {
@@ -35,25 +41,62 @@ class FirstRunViewModel @Inject constructor(
     companion object {
         private const val TAG = "FirstRunViewModel"
     }
+    
+    init {
+        // Check engine status on init
+        val info = streamEngine.getEngineInfo()
+        _uiState.value = _uiState.value.copy(
+            engineInfo = "${info.name} ${info.version ?: "(not installed)"}"
+        )
+    }
 
     fun startScanning() {
         viewModelScope.launch {
-            _uiState.value = FirstRunUiState(
+            _uiState.value = _uiState.value.copy(
                 step = SetupStep.SCANNING,
-                statusMessage = "Connecting to AceStream Engine..."
+                statusMessage = "Checking streaming engine..."
             )
 
+            // Check if engine is installed and ready
+            val installResult = streamEngine.ensureInstalled()
+            
+            when (installResult) {
+                is InstallResult.InstallationRequired -> {
+                    _uiState.value = _uiState.value.copy(
+                        engineInstalled = false,
+                        statusMessage = "Streaming engine not installed"
+                    )
+                    // Continue with mock data
+                    loadMockData()
+                    return@launch
+                }
+                is InstallResult.Failed -> {
+                    Log.e(TAG, "Engine installation failed: ${installResult.reason}")
+                    loadMockData()
+                    return@launch
+                }
+                else -> {
+                    // Engine is available
+                }
+            }
+
             try {
-                // Try to connect to AceStream
-                Log.d(TAG, "Attempting to connect to AceStream...")
-                aceStreamClient.waitForConnection(timeout = 10.seconds)
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Connecting to streaming engine..."
+                )
+                
+                if (!streamEngine.isAvailable()) {
+                    Log.d(TAG, "Engine not available")
+                    loadMockData()
+                    return@launch
+                }
                 
                 _uiState.value = _uiState.value.copy(
                     statusMessage = "Fetching channel list..."
                 )
                 
-                val channels = aceStreamClient.searchAll()
-                Log.d(TAG, "Found ${channels.size} channels from AceStream")
+                val channels = streamEngine.searchChannels()
+                Log.d(TAG, "Found ${channels.size} channels")
                 
                 if (channels.isNotEmpty()) {
                     _uiState.value = _uiState.value.copy(
@@ -61,7 +104,9 @@ class FirstRunViewModel @Inject constructor(
                         statusMessage = "Saving channels..."
                     )
                     
-                    channelRepository.insertFromScraper(channels, System.currentTimeMillis())
+                    // Convert to AceStreamChannel format for repository
+                    val aceChannels = channels.map { it.toAceStreamChannel() }
+                    channelRepository.insertFromScraper(aceChannels, System.currentTimeMillis())
                     
                     delay(500)
                     
@@ -69,12 +114,10 @@ class FirstRunViewModel @Inject constructor(
                         step = SetupStep.COMPLETE
                     )
                 } else {
-                    // No channels from AceStream, use mock data
                     loadMockData()
                 }
             } catch (e: Exception) {
-                Log.d(TAG, "AceStream not available: ${e.message}")
-                // Fall back to mock data
+                Log.d(TAG, "Scan failed: ${e.message}")
                 loadMockData()
             }
             
@@ -83,9 +126,20 @@ class FirstRunViewModel @Inject constructor(
         }
     }
     
+    fun openEngineInstall() {
+        aceStreamEngine.openPlayStore()
+    }
+    
+    fun retryWithEngine() {
+        _uiState.value = _uiState.value.copy(
+            step = SetupStep.WELCOME,
+            engineInstalled = true
+        )
+    }
+    
     private suspend fun loadMockData() {
         _uiState.value = _uiState.value.copy(
-            statusMessage = "AceStream not found, loading demo channels..."
+            statusMessage = "Loading demo channels..."
         )
         
         delay(500)
@@ -96,6 +150,21 @@ class FirstRunViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             step = SetupStep.COMPLETE,
             channelsFound = 0 // 0 indicates mock data
+        )
+        
+        settingsDataStore.setFirstRunComplete()
+    }
+    
+    private fun EngineChannel.toAceStreamChannel(): AceStreamChannel {
+        return AceStreamChannel(
+            infohash = id,
+            name = name,
+            categories = categories,
+            languages = languages,
+            countries = countries,
+            icons = iconUrl?.let { listOf(com.aethertv.data.remote.ChannelIcon(it)) } ?: emptyList(),
+            status = (metadata["status"] as? Int) ?: 0,
+            availability = (metadata["availability"] as? Float) ?: 0f
         )
     }
 }
