@@ -13,7 +13,7 @@
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
 | Phase 1: MVP App | ✅ Complete | 100% |
-| Phase 2: Verification + Polish | 🔄 In Progress | 50% |
+| Phase 2: Verification + Polish | 🔄 In Progress | 70% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
 ---
@@ -33,6 +33,7 @@
 | **v1.0.0-debug** | 2026-02-08 | **Phase 1 MVP Complete** — First-run flow, favorites, watch history, buffer indicator |
 | v1.1.0-debug | 2026-02-08 | Phase 2: Stream verification with quality detection |
 | v1.2.0-debug | 2026-02-08 | **Engine abstraction layer** — swappable P2P backends |
+| v1.3.0-debug | 2026-02-08 | Voice search, engine management in Settings |
 
 ---
 

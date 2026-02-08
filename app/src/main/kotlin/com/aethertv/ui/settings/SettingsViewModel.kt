@@ -7,6 +7,8 @@ import com.aethertv.data.local.WatchHistoryDao
 import com.aethertv.data.repository.GitHubRelease
 import com.aethertv.data.repository.UpdateRepository
 import com.aethertv.data.repository.UpdateState
+import com.aethertv.engine.AceStreamEngine
+import com.aethertv.engine.StreamEngine
 import com.aethertv.verification.StreamVerifier
 import com.aethertv.verification.VerificationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,12 +29,21 @@ data class VerificationProgress(
     val isRunning: Boolean = false
 )
 
+data class EngineState(
+    val name: String = "Unknown",
+    val version: String? = null,
+    val isInstalled: Boolean = false,
+    val isRunning: Boolean = false
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val updateRepository: UpdateRepository,
     private val watchHistoryDao: WatchHistoryDao,
     private val streamVerifier: StreamVerifier,
     private val channelDao: ChannelDao,
+    private val streamEngine: StreamEngine,
+    private val aceStreamEngine: AceStreamEngine,
 ) : ViewModel() {
     
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -47,12 +58,42 @@ class SettingsViewModel @Inject constructor(
     private val _verificationProgress = MutableStateFlow(VerificationProgress())
     val verificationProgress: StateFlow<VerificationProgress> = _verificationProgress.asStateFlow()
     
+    private val _engineState = MutableStateFlow(EngineState())
+    val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
+    
     private var pendingRelease: GitHubRelease? = null
     private var pendingApkFile: File? = null
     private var verificationJob: Job? = null
     
     init {
         _currentVersion.value = updateRepository.getCurrentVersion()
+        refreshEngineStatus()
+    }
+    
+    fun refreshEngineStatus() {
+        viewModelScope.launch {
+            val info = streamEngine.getEngineInfo()
+            val isAvailable = streamEngine.isAvailable()
+            
+            _engineState.value = EngineState(
+                name = info.name,
+                version = info.version,
+                isInstalled = aceStreamEngine.isInstalled(),
+                isRunning = isAvailable
+            )
+        }
+    }
+    
+    fun launchEngine() {
+        aceStreamEngine.launchEngine()
+        viewModelScope.launch {
+            delay(3000) // Wait for engine to start
+            refreshEngineStatus()
+        }
+    }
+    
+    fun installEngine() {
+        aceStreamEngine.openPlayStore()
     }
     
     fun clearWatchHistory() {

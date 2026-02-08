@@ -27,6 +27,7 @@ import hilt_aggregated_deps._com_aethertv_di_PlayerModule;
 import hilt_aggregated_deps._com_aethertv_di_RepositoryModule;
 import hilt_aggregated_deps._com_aethertv_epg_EpgRefreshWorker_HiltModule;
 import hilt_aggregated_deps._com_aethertv_scraper_ScraperWorker_HiltModule;
+import hilt_aggregated_deps._com_aethertv_search_ChannelSearchProvider_ChannelSearchProviderEntryPoint;
 import hilt_aggregated_deps._com_aethertv_ui_MainActivity_GeneratedInjector;
 import hilt_aggregated_deps._com_aethertv_ui_guide_GuideViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_aethertv_ui_guide_GuideViewModel_HiltModules_KeyModule;
@@ -90,6 +91,7 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_aethertv_di_RepositoryModule.class,
         _com_aethertv_epg_EpgRefreshWorker_HiltModule.class,
         _com_aethertv_scraper_ScraperWorker_HiltModule.class,
+        _com_aethertv_search_ChannelSearchProvider_ChannelSearchProviderEntryPoint.class,
         _com_aethertv_ui_MainActivity_GeneratedInjector.class,
         _com_aethertv_ui_guide_GuideViewModel_HiltModules_BindsModule.class,
         _com_aethertv_ui_guide_GuideViewModel_HiltModules_KeyModule.class,

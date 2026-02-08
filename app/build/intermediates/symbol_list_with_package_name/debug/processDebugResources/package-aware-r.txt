@@ -817,6 +817,8 @@ string navigation_menu
 string not_selected
 string range_end
 string range_start
+string search_description
+string search_hint
 string selected
 string snackbar_pane_title
 string state_empty
@@ -912,3 +914,4 @@ styleable StateListDrawable android_dither android_visible android_variablePaddi
 styleable StateListDrawableItem android_drawable
 xml file_paths
 xml network_security_config
+xml searchable

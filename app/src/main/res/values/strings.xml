@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AetherTV</string>
+    <string name="search_hint">Search TV channels</string>
+    <string name="search_description">Search for live TV channels</string>
 </resources>

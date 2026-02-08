@@ -77,6 +77,56 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Streaming Engine section
+            SettingsSection(title = "Streaming Engine") {
+                val engineState by viewModel.engineState.collectAsState()
+                
+                SettingsRow(
+                    label = "Engine",
+                    value = engineState.name
+                )
+                SettingsRow(
+                    label = "Version",
+                    value = engineState.version ?: "Not installed"
+                )
+                SettingsRow(
+                    label = "Status",
+                    value = when {
+                        engineState.isRunning -> "🟢 Running"
+                        engineState.isInstalled -> "🟡 Installed (not running)"
+                        else -> "🔴 Not installed"
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (!engineState.isInstalled) {
+                        FocusableButton(
+                            text = "Install",
+                            onClick = { viewModel.installEngine() },
+                            focusRequester = null,
+                            primary = true
+                        )
+                    } else if (!engineState.isRunning) {
+                        FocusableButton(
+                            text = "Launch Engine",
+                            onClick = { viewModel.launchEngine() },
+                            focusRequester = null,
+                            primary = true
+                        )
+                    }
+                    
+                    FocusableButton(
+                        text = "Refresh Status",
+                        onClick = { viewModel.refreshEngineStatus() },
+                        focusRequester = null
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             // Updates section
             SettingsSection(title = "Updates") {
                 UpdateSection(

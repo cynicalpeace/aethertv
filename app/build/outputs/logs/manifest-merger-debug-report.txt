@@ -1,6 +1,15 @@
 -- Merging decision tree log ---
+provider#com.aethertv.search.ChannelSearchProvider
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:46:9-53:20
+	android:authorities
+		INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:48:13-58
+	android:exported
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:49:13-36
+	android:name
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:47:13-57
 provider#androidx.startup.InitializationProvider
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:38:9-47:20
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:55:9-64:20
 MERGED from [androidx.work:work-runtime:2.10.0] /home/hero/.gradle/caches/8.10.2/transforms/fe17116d53be9fe3abd3d2a96d46a384/transformed/work-runtime-2.10.0/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.work:work-runtime:2.10.0] /home/hero/.gradle/caches/8.10.2/transforms/fe17116d53be9fe3abd3d2a96d46a384/transformed/work-runtime-2.10.0/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.emoji2:emoji2:1.4.0] /home/hero/.gradle/caches/8.10.2/transforms/6270558b1bd6a3939d52ff8f8a910cdc/transformed/emoji2-1.4.0/AndroidManifest.xml:24:9-32:20
@@ -12,30 +21,30 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.4.1] /home/hero/.gradl
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/hero/.gradle/caches/8.10.2/transforms/1bc4526a130881d35020439244704b9e/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/hero/.gradle/caches/8.10.2/transforms/1bc4526a130881d35020439244704b9e/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 	tools:node
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:42:13-31
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:59:13-31
 	android:authorities
 		INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:40:13-68
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:57:13-68
 	android:exported
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:41:13-37
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:58:13-37
 	android:name
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:39:13-67
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:56:13-67
 provider#androidx.core.content.FileProvider
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:49:9-57:20
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:66:9-74:20
 	android:grantUriPermissions
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:53:13-47
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:70:13-47
 	android:authorities
 		INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:51:13-64
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:68:13-64
 	android:exported
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:52:13-37
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:69:13-37
 	android:name
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:50:13-62
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:67:13-62
 manifest
-ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-61:12
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-61:12
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-61:12
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-61:12
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-78:12
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-78:12
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-78:12
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:2:1-78:12
 MERGED from [androidx.tv:tv-foundation:1.0.0-alpha12] /home/hero/.gradle/caches/8.10.2/transforms/698779535e77f36e4649e2d6ac0e74ab/transformed/tv-foundation-1.0.0-alpha12/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.tv:tv-material:1.0.1] /home/hero/.gradle/caches/8.10.2/transforms/6c5770651bf8c29f10c53bf8a162c001/transformed/tv-material-1.0.1/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.hilt:hilt-navigation-compose:1.2.0] /home/hero/.gradle/caches/8.10.2/transforms/f9c9053e837b959b0b9fb2559fe6b9df/transformed/hilt-navigation-compose-1.2.0/AndroidManifest.xml:2:1-7:12
@@ -191,8 +200,8 @@ ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:14:5-16:36
 	android:name
 		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:15:9-52
 application
-ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:18:5-59:19
-INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:18:5-59:19
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:18:5-76:19
+INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml:18:5-76:19
 MERGED from [androidx.room:room-runtime-android:2.7.0] /home/hero/.gradle/caches/8.10.2/transforms/0bc9cac1ff1d7252fccced36849cf374/transformed/room-runtime-release/AndroidManifest.xml:23:5-29:19
 MERGED from [androidx.room:room-runtime-android:2.7.0] /home/hero/.gradle/caches/8.10.2/transforms/0bc9cac1ff1d7252fccced36849cf374/transformed/room-runtime-release/AndroidManifest.xml:23:5-29:19
 MERGED from [androidx.work:work-runtime:2.10.0] /home/hero/.gradle/caches/8.10.2/transforms/fe17116d53be9fe3abd3d2a96d46a384/transformed/work-runtime-2.10.0/AndroidManifest.xml:28:5-143:19
@@ -234,7 +243,7 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/hero/
 	android:name
 		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:19:9-36
 activity#com.aethertv.ui.MainActivity
-ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:28:9-36:20
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:28:9-43:20
 	android:exported
 		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:30:13-36
 	android:configChanges
@@ -251,21 +260,39 @@ category#android.intent.category.LEANBACK_LAUNCHER
 ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:34:17-86
 	android:name
 		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:34:27-83
+intent-filter#action:name:android.intent.action.SEARCH
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:37:13-39:29
+action#android.intent.action.SEARCH
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:38:17-71
+	android:name
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:38:25-68
+meta-data#android.app.searchable
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:40:13-42:54
+	android:resource
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:42:17-51
+	android:name
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:41:17-54
+meta-data#android.content.SEARCH_SUGGESTIONS
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:50:13-52:54
+	android:resource
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:52:17-51
+	android:name
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:51:17-66
 meta-data#androidx.work.WorkManagerInitializer
-ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:43:13-46:39
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:60:13-63:39
 REJECTED from [androidx.work:work-runtime:2.10.0] /home/hero/.gradle/caches/8.10.2/transforms/fe17116d53be9fe3abd3d2a96d46a384/transformed/work-runtime-2.10.0/AndroidManifest.xml:34:13-36:52
 	tools:node
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:46:17-36
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:63:17-36
 	android:value
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:45:17-49
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:62:17-49
 	android:name
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:44:17-68
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:61:17-68
 meta-data#android.support.FILE_PROVIDER_PATHS
-ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:54:13-56:54
+ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:71:13-73:54
 	android:resource
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:56:17-51
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:73:17-51
 	android:name
-		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:55:17-67
+		ADDED from /home/hero/acestream/app/src/main/AndroidManifest.xml:72:17-67
 uses-sdk
 INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/hero/acestream/app/src/main/AndroidManifest.xml

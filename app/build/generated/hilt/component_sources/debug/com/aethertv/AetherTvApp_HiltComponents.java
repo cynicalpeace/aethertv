@@ -9,6 +9,7 @@ import com.aethertv.di.PlayerModule;
 import com.aethertv.di.RepositoryModule;
 import com.aethertv.epg.EpgRefreshWorker_HiltModule;
 import com.aethertv.scraper.ScraperWorker_HiltModule;
+import com.aethertv.search.ChannelSearchProvider;
 import com.aethertv.ui.MainActivity_GeneratedInjector;
 import com.aethertv.ui.guide.GuideViewModel_HiltModules;
 import com.aethertv.ui.home.HomeViewModel_HiltModules;
@@ -157,6 +158,7 @@ public final class AetherTvApp_HiltComponents {
   )
   @Singleton
   public abstract static class SingletonC implements AetherTvApp_GeneratedInjector,
+      ChannelSearchProvider.ChannelSearchProviderEntryPoint,
       FragmentGetContextFix.FragmentGetContextFixEntryPoint,
       HiltWrapper_ActivityRetainedComponentManager_ActivityRetainedComponentBuilderEntryPoint,
       ServiceComponentManager.ServiceComponentBuilderEntryPoint,

@@ -44,7 +44,17 @@ object SettingsRoute
 fun AetherTvNavHost(
     navController: NavHostController = rememberNavController(),
     isFirstRun: Boolean = true,
+    initialSearchQuery: String? = null,
+    onSearchHandled: () -> Unit = {},
 ) {
+    // Handle initial search query
+    LaunchedEffect(initialSearchQuery) {
+        if (initialSearchQuery != null && !isFirstRun) {
+            navController.navigate(SearchRoute)
+            onSearchHandled()
+        }
+    }
+    
     NavHost(
         navController = navController,
         startDestination = if (isFirstRun) FirstRunRoute else HomeRoute,
