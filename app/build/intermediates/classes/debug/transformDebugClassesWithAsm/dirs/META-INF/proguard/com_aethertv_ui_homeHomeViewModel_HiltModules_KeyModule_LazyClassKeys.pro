@@ -1,0 +1,10 @@
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.settings.SettingsViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.settings.SettingsViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.search.SearchViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.search.SearchViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.player.PlayerViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.player.PlayerViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.guide.GuideViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.guide.GuideViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.home.HomeViewModel
+-keep,allowobfuscation,allowshrinking class com.aethertv.ui.home.HomeViewModel
