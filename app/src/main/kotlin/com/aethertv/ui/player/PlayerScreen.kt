@@ -88,6 +88,16 @@ fun PlayerScreen(
                             showOverlay = !showOverlay
                             true
                         }
+                        KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
+                            viewModel.previousChannel()
+                            showOverlay = true
+                            true
+                        }
+                        KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                            viewModel.nextChannel()
+                            showOverlay = true
+                            true
+                        }
                         KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                             viewModel.togglePlayPause()
                             showOverlay = true
@@ -225,15 +235,38 @@ fun PlayerScreen(
                     }
                 }
                 
-                // Bottom hint
-                Text(
-                    text = "OK: Toggle overlay • Back: Exit • Play/Pause: Toggle playback",
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 12.sp,
+                // Bottom bar with controls hint and channel position
+                Surface(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(24.dp)
-                )
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = androidx.tv.material3.SurfaceDefaults.colors(
+                        containerColor = Color.Black.copy(alpha = 0.7f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "↑↓ Switch • OK: Overlay • Back: Exit",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp
+                        )
+                        if (uiState.channelList.isNotEmpty() && uiState.currentIndex >= 0) {
+                            Text(
+                                text = "${uiState.currentIndex + 1} / ${uiState.channelList.size}",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
             }
         }
     }

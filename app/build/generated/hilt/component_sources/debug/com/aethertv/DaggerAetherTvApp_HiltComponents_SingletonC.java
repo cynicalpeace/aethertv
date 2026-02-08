@@ -534,7 +534,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
           return (T) new HomeViewModel(viewModelCImpl.getChannelsUseCase(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get());
 
           case 2: // com.aethertv.ui.player.PlayerViewModel 
-          return (T) new PlayerViewModel(singletonCImpl.provideExoPlayerProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get());
+          return (T) new PlayerViewModel(singletonCImpl.provideExoPlayerProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), viewModelCImpl.getChannelsUseCase());
 
           case 3: // com.aethertv.ui.search.SearchViewModel 
           return (T) new SearchViewModel(viewModelCImpl.searchChannelsUseCase());

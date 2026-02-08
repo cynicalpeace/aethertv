@@ -29,7 +29,7 @@ class SearchViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
-    fun onQueryChanged(query: String) {
+    fun updateQuery(query: String) {
         _uiState.value = _uiState.value.copy(query = query)
         searchJob?.cancel()
         if (query.isBlank()) {
@@ -44,4 +44,7 @@ class SearchViewModel @Inject constructor(
             }
         }
     }
+    
+    // Alias for compatibility
+    fun onQueryChanged(query: String) = updateQuery(query)
 }

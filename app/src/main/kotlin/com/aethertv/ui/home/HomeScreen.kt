@@ -80,6 +80,11 @@ fun HomeScreen(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Search button
+                TopBarButton(
+                    text = "🔍 Search",
+                    onClick = onNavigateToSearch
+                )
                 // Refresh button
                 TopBarButton(
                     text = "🔄 Refresh",
