@@ -12,9 +12,20 @@
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
-| Phase 1: MVP App | 🔄 In Progress | 10% |
+| Phase 1: MVP App | 🔄 In Progress | 25% |
 | Phase 2: Verification + Polish | ⏳ Pending | 0% |
 | Phase 3: Release | ⏳ Pending | 0% |
+
+---
+
+## Releases
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| v0.1.0-debug | 2026-02-08 | Initial APK build with scaffold |
+| v0.1.1-debug | 2026-02-08 | Fixed black screen, added welcome message |
+| v0.2.0-debug | 2026-02-08 | Added mock data (20 channels, 4 categories) |
+| v0.3.0-debug | 2026-02-08 | **Settings screen with in-app updates** |
 
 ---
 
@@ -47,10 +58,11 @@
 - [ ] **1.4** DataStore settings proto
 
 ### Week 2: Home Screen
-- [ ] **1.5** ChannelCard composable with D-pad focus
-- [ ] **1.6** Home screen with category rows
+- [x] **1.5** ChannelCard composable with D-pad focus ✅ v0.2.0
+- [x] **1.6** Home screen with category rows ✅ v0.2.0 (mock data)
 - [ ] **1.7** Favorites functionality (long-press)
 - [ ] **1.8** Basic search UI
+- [x] **1.9** Settings screen with in-app updates ✅ v0.3.0
 
 ### Week 3: Player
 - [ ] **1.9** ExoPlayer integration with AceStream
