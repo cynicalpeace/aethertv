@@ -49,6 +49,18 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun getPlayer(): ExoPlayer = exoPlayer
+    
+    fun togglePlayPause() {
+        if (exoPlayer.isPlaying) {
+            exoPlayer.pause()
+        } else {
+            exoPlayer.play()
+        }
+    }
+    
+    fun isPlaying(): Boolean = exoPlayer.isPlaying
+
     fun releasePlayer() {
         exoPlayer.stop()
         exoPlayer.clearMediaItems()
