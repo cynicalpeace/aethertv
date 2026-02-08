@@ -16,8 +16,8 @@ android {
         applicationId = "com.aethertv.app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.3.0"
+        versionCode = 16
+        versionName = "1.6.0"
     }
 
     buildTypes {
@@ -47,6 +47,16 @@ android {
 
     room {
         schemaDirectory("$projectDir/schemas")
+    }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val versionName = variant.versionName
+            val buildType = variant.buildType.name
+            output.outputFileName = "aethertv-${versionName}-${buildType}.apk"
+        }
     }
 }
 
