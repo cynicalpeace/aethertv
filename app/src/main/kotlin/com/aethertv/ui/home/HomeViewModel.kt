@@ -1,9 +1,11 @@
 package com.aethertv.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.MockDataProvider
 import com.aethertv.data.preferences.SettingsDataStore
+import com.aethertv.data.remote.AceStreamEngineClient
 import com.aethertv.domain.model.Channel
 import com.aethertv.domain.usecase.GetChannelsUseCase
 import com.aethertv.data.repository.ChannelRepository
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
 data class CategoryRow(
     val categoryName: String,
@@ -36,17 +39,26 @@ class HomeViewModel @Inject constructor(
     private val getChannelsUseCase: GetChannelsUseCase,
     private val channelRepository: ChannelRepository,
     private val settingsDataStore: SettingsDataStore,
+    private val aceStreamClient: AceStreamEngineClient,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
+
     init {
         viewModelScope.launch {
-            // Check if first run and load mock data
+            // Check if first run
             val isFirstRun = settingsDataStore.isFirstRun.first()
             if (isFirstRun) {
-                loadMockData()
+                // Try AceStream first, fall back to mock data
+                val connected = tryFetchFromAceStream()
+                if (!connected) {
+                    loadMockData()
+                }
                 settingsDataStore.setFirstRunComplete()
             }
             
@@ -66,18 +78,47 @@ class HomeViewModel @Inject constructor(
                         rows.add(CategoryRow(category.replaceFirstChar { it.uppercase() }, channelsInCategory))
                     }
                 }
+                val status = when {
+                    rows.isEmpty() -> EngineStatus.NOT_FOUND
+                    rows.any { it.channels.any { ch -> ch.categories.contains("mock") } } -> EngineStatus.MOCK_DATA
+                    else -> EngineStatus.CONNECTED
+                }
                 HomeUiState(
                     categoryRows = rows,
                     isLoading = false,
-                    engineStatus = if (rows.isNotEmpty()) EngineStatus.MOCK_DATA else EngineStatus.NOT_FOUND,
+                    engineStatus = status,
                 )
             }.collect { _uiState.value = it }
         }
     }
 
+    private suspend fun tryFetchFromAceStream(): Boolean {
+        return try {
+            Log.d(TAG, "Attempting to connect to AceStream engine...")
+            aceStreamClient.waitForConnection(timeout = 10.seconds)
+            Log.d(TAG, "Connected! Fetching channels...")
+            
+            val channels = aceStreamClient.searchAll()
+            Log.d(TAG, "Found ${channels.size} channels from AceStream")
+            
+            if (channels.isNotEmpty()) {
+                channelRepository.insertFromScraper(channels, System.currentTimeMillis())
+                _uiState.value = _uiState.value.copy(engineStatus = EngineStatus.CONNECTED)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "AceStream not available: ${e.message}")
+            false
+        }
+    }
+
     private suspend fun loadMockData() {
+        Log.d(TAG, "Loading mock data...")
         val mockChannels = MockDataProvider.getMockChannels()
         channelRepository.insertFromScraper(mockChannels, System.currentTimeMillis())
+        _uiState.value = _uiState.value.copy(engineStatus = EngineStatus.MOCK_DATA)
     }
 
     fun toggleFavorite(infohash: String) {
@@ -89,7 +130,14 @@ class HomeViewModel @Inject constructor(
     fun refreshChannels() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            loadMockData()
+            val connected = tryFetchFromAceStream()
+            if (!connected) {
+                // Keep existing data, just update status
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    engineStatus = EngineStatus.NOT_FOUND
+                )
+            }
         }
     }
 }

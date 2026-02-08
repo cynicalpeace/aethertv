@@ -54,17 +54,43 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "AetherTV",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "AetherTV",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                // Engine status indicator
+                val statusText = when (uiState.engineStatus) {
+                    EngineStatus.CONNECTED -> "🟢 Live"
+                    EngineStatus.MOCK_DATA -> "📋 Demo"
+                    EngineStatus.NOT_FOUND -> "🔴 Offline"
+                    EngineStatus.UNKNOWN -> "..."
+                }
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             
-            // Settings button
-            TopBarButton(
-                text = "⚙ Settings",
-                onClick = onNavigateToSettings
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Refresh button
+                TopBarButton(
+                    text = "🔄 Refresh",
+                    onClick = { viewModel.refreshChannels() }
+                )
+                // Settings button
+                TopBarButton(
+                    text = "⚙ Settings",
+                    onClick = onNavigateToSettings
+                )
+            }
         }
 
         if (uiState.isLoading) {

@@ -1,6 +1,7 @@
 package com.aethertv.ui.home;
 
 import com.aethertv.data.preferences.SettingsDataStore;
+import com.aethertv.data.remote.AceStreamEngineClient;
 import com.aethertv.data.repository.ChannelRepository;
 import com.aethertv.domain.usecase.GetChannelsUseCase;
 import dagger.internal.DaggerGenerated;
@@ -34,35 +35,42 @@ public final class HomeViewModel_Factory implements Factory<HomeViewModel> {
 
   private final Provider<SettingsDataStore> settingsDataStoreProvider;
 
+  private final Provider<AceStreamEngineClient> aceStreamClientProvider;
+
   public HomeViewModel_Factory(Provider<GetChannelsUseCase> getChannelsUseCaseProvider,
       Provider<ChannelRepository> channelRepositoryProvider,
-      Provider<SettingsDataStore> settingsDataStoreProvider) {
+      Provider<SettingsDataStore> settingsDataStoreProvider,
+      Provider<AceStreamEngineClient> aceStreamClientProvider) {
     this.getChannelsUseCaseProvider = getChannelsUseCaseProvider;
     this.channelRepositoryProvider = channelRepositoryProvider;
     this.settingsDataStoreProvider = settingsDataStoreProvider;
+    this.aceStreamClientProvider = aceStreamClientProvider;
   }
 
   @Override
   public HomeViewModel get() {
-    return newInstance(getChannelsUseCaseProvider.get(), channelRepositoryProvider.get(), settingsDataStoreProvider.get());
+    return newInstance(getChannelsUseCaseProvider.get(), channelRepositoryProvider.get(), settingsDataStoreProvider.get(), aceStreamClientProvider.get());
   }
 
   public static HomeViewModel_Factory create(
       javax.inject.Provider<GetChannelsUseCase> getChannelsUseCaseProvider,
       javax.inject.Provider<ChannelRepository> channelRepositoryProvider,
-      javax.inject.Provider<SettingsDataStore> settingsDataStoreProvider) {
-    return new HomeViewModel_Factory(Providers.asDaggerProvider(getChannelsUseCaseProvider), Providers.asDaggerProvider(channelRepositoryProvider), Providers.asDaggerProvider(settingsDataStoreProvider));
+      javax.inject.Provider<SettingsDataStore> settingsDataStoreProvider,
+      javax.inject.Provider<AceStreamEngineClient> aceStreamClientProvider) {
+    return new HomeViewModel_Factory(Providers.asDaggerProvider(getChannelsUseCaseProvider), Providers.asDaggerProvider(channelRepositoryProvider), Providers.asDaggerProvider(settingsDataStoreProvider), Providers.asDaggerProvider(aceStreamClientProvider));
   }
 
   public static HomeViewModel_Factory create(
       Provider<GetChannelsUseCase> getChannelsUseCaseProvider,
       Provider<ChannelRepository> channelRepositoryProvider,
-      Provider<SettingsDataStore> settingsDataStoreProvider) {
-    return new HomeViewModel_Factory(getChannelsUseCaseProvider, channelRepositoryProvider, settingsDataStoreProvider);
+      Provider<SettingsDataStore> settingsDataStoreProvider,
+      Provider<AceStreamEngineClient> aceStreamClientProvider) {
+    return new HomeViewModel_Factory(getChannelsUseCaseProvider, channelRepositoryProvider, settingsDataStoreProvider, aceStreamClientProvider);
   }
 
   public static HomeViewModel newInstance(GetChannelsUseCase getChannelsUseCase,
-      ChannelRepository channelRepository, SettingsDataStore settingsDataStore) {
-    return new HomeViewModel(getChannelsUseCase, channelRepository, settingsDataStore);
+      ChannelRepository channelRepository, SettingsDataStore settingsDataStore,
+      AceStreamEngineClient aceStreamClient) {
+    return new HomeViewModel(getChannelsUseCase, channelRepository, settingsDataStore, aceStreamClient);
   }
 }
