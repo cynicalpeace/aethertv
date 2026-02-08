@@ -12,7 +12,7 @@
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
-| Phase 1: MVP App | 🔄 In Progress | 25% |
+| Phase 1: MVP App | 🔄 In Progress | 40% |
 | Phase 2: Verification + Polish | ⏳ Pending | 0% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
@@ -26,6 +26,8 @@
 | v0.1.1-debug | 2026-02-08 | Fixed black screen, added welcome message |
 | v0.2.0-debug | 2026-02-08 | Added mock data (20 channels, 4 categories) |
 | v0.3.0-debug | 2026-02-08 | **Settings screen with in-app updates** |
+| v0.3.1-debug | 2026-02-08 | Fixed version display, scrollable settings |
+| v0.4.0-debug | 2026-02-08 | **AceStream scraper wiring, refresh button, status indicator** |
 
 ---
 
