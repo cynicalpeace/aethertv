@@ -3,7 +3,9 @@ package com.aethertv.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +40,8 @@ fun SettingsScreen(
         checkUpdateFocus.requestFocus()
     }
     
+    val scrollState = rememberScrollState()
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -52,6 +56,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(48.dp)
         ) {
             // Header
@@ -92,7 +97,7 @@ fun SettingsScreen(
                 SettingsRow(label = "Hardware Decoding", value = "Auto")
             }
             
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(48.dp))
             
             // Footer hint
             Text(
@@ -100,6 +105,8 @@ fun SettingsScreen(
                 color = Color.Gray,
                 fontSize = 14.sp
             )
+            
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
