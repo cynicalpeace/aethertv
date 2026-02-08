@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -23,6 +24,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
+import com.aethertv.data.local.entity.FilterRuleEntity
 import com.aethertv.data.repository.UpdateState
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -151,6 +153,37 @@ fun SettingsScreen(
                     onSync = { viewModel.syncEpg() },
                     onCancel = { viewModel.cancelEpgSync() },
                     onClear = { viewModel.clearEpg() }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // EPG Matching section
+            SettingsSection(title = "EPG Channel Matching") {
+                val epgMatchState by viewModel.epgMatchState.collectAsState()
+                
+                LaunchedEffect(Unit) {
+                    viewModel.loadEpgMatchData()
+                }
+                
+                EpgMatchSection(
+                    state = epgMatchState,
+                    onAutoMatch = { viewModel.autoMatchEpg() },
+                    onClearMappings = { viewModel.clearEpgMappings() }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Filter Rules section
+            SettingsSection(title = "Channel Filters") {
+                val rules by viewModel.filterRules.collectAsState()
+                
+                FilterRulesSection(
+                    rules = rules,
+                    onAddRule = { type, pattern -> viewModel.addFilterRule(type, pattern) },
+                    onToggleRule = { rule -> viewModel.toggleFilterRule(rule) },
+                    onDeleteRule = { rule -> viewModel.deleteFilterRule(rule) }
                 )
             }
             
@@ -303,6 +336,306 @@ private fun SettingsRow(
             color = Color.Gray,
             fontSize = 16.sp
         )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun EpgMatchSection(
+    state: EpgMatchState,
+    onAutoMatch: () -> Unit,
+    onClearMappings: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Match your channels to EPG data for program info in the Guide.",
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
+        
+        // Stats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "${state.matchedChannels}/${state.totalChannels}",
+                    color = Color(0xFF00B4D8),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Matched",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "${state.availableEpgChannels}",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "EPG Channels",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            }
+        }
+        
+        if (state.isMatching) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Matching... ${state.matchProgress}%",
+                    color = Color(0xFF00B4D8),
+                    fontSize = 14.sp
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(Color(0xFF333333), RoundedCornerShape(2.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(state.matchProgress / 100f)
+                            .height(4.dp)
+                            .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
+                    )
+                }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (state.availableEpgChannels > 0) {
+                    FocusableButton(
+                        text = "Auto-Match",
+                        onClick = onAutoMatch,
+                        focusRequester = null,
+                        primary = true
+                    )
+                }
+                if (state.matchedChannels > 0) {
+                    FocusableButton(
+                        text = "Clear Mappings",
+                        onClick = onClearMappings,
+                        focusRequester = null
+                    )
+                }
+            }
+            
+            if (state.availableEpgChannels == 0) {
+                Text(
+                    text = "Sync EPG data first to enable matching",
+                    color = Color.DarkGray,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun FilterRulesSection(
+    rules: List<FilterRuleEntity>,
+    onAddRule: (type: String, pattern: String) -> Unit,
+    onToggleRule: (FilterRuleEntity) -> Unit,
+    onDeleteRule: (FilterRuleEntity) -> Unit
+) {
+    var selectedType by remember { mutableStateOf("name_exclude") }
+    var patternText by remember { mutableStateOf("") }
+    
+    val filterTypes = listOf(
+        "name_exclude" to "Exclude by Name",
+        "name_include" to "Include by Name",
+        "category" to "Category Filter",
+        "language" to "Language Filter",
+        "country" to "Country Filter"
+    )
+    
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Filter channels by name patterns, categories, or languages.",
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
+        
+        // Add new rule
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Type selector
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                filterTypes.take(3).forEach { (type, label) ->
+                    val isSelected = selectedType == type
+                    Surface(
+                        onClick = { selectedType = type },
+                        modifier = Modifier.focusable(),
+                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = if (isSelected) Color(0xFF00B4D8) else Color(0xFF2A2A2A),
+                            focusedContainerColor = if (isSelected) Color(0xFF00B4D8) else Color(0xFF444444)
+                        )
+                    ) {
+                        Text(
+                            text = label.split(" ").first(),
+                            fontSize = 11.sp,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Pattern input
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.weight(1f).focusable(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = SurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A))
+                ) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = patternText,
+                        onValueChange = { patternText = it },
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 14.sp
+                        ),
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (patternText.isEmpty()) {
+                                    Text(
+                                        text = when (selectedType) {
+                                            "name_exclude", "name_include" -> "e.g., Spanish|French"
+                                            "category" -> "e.g., sports"
+                                            "language" -> "e.g., en|es"
+                                            "country" -> "e.g., US|UK"
+                                            else -> "Pattern (regex)"
+                                        },
+                                        color = Color.Gray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                }
+                
+                FocusableButton(
+                    text = "+ Add",
+                    onClick = {
+                        if (patternText.isNotBlank()) {
+                            onAddRule(selectedType, patternText)
+                            patternText = ""
+                        }
+                    },
+                    focusRequester = null,
+                    primary = true
+                )
+            }
+        }
+        
+        // Existing rules
+        if (rules.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Active Rules (${rules.size})",
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                rules.forEach { rule ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF222222), RoundedCornerShape(4.dp))
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = when (rule.type) {
+                                    "name_exclude" -> "🚫"
+                                    "name_include" -> "✓"
+                                    "category" -> "📁"
+                                    "language" -> "🌐"
+                                    "country" -> "🏳️"
+                                    else -> "📋"
+                                },
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = rule.pattern,
+                                color = if (rule.isEnabled) Color.White else Color.Gray,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                        
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Surface(
+                                onClick = { onToggleRule(rule) },
+                                modifier = Modifier.focusable(),
+                                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color(0xFF333333),
+                                    focusedContainerColor = Color(0xFF444444)
+                                )
+                            ) {
+                                Text(
+                                    text = if (rule.isEnabled) "ON" else "OFF",
+                                    fontSize = 10.sp,
+                                    color = if (rule.isEnabled) Color(0xFF4CAF50) else Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                            
+                            Surface(
+                                onClick = { onDeleteRule(rule) },
+                                modifier = Modifier.focusable(),
+                                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color(0xFF333333),
+                                    focusedContainerColor = Color(0xFFF44336)
+                                )
+                            ) {
+                                Text(
+                                    text = "✕",
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = "No filter rules configured",
+                color = Color.DarkGray,
+                fontSize = 12.sp
+            )
+        }
     }
 }
 

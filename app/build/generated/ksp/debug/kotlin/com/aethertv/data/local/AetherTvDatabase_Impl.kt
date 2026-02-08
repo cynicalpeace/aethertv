@@ -43,6 +43,10 @@ public class AetherTvDatabase_Impl : AetherTvDatabase() {
     WatchHistoryDao_Impl(this)
   }
 
+  private val _filterRuleDao: Lazy<FilterRuleDao> = lazy {
+    FilterRuleDao_Impl(this)
+  }
+
   protected override fun createOpenDelegate(): RoomOpenDelegate {
     val _openDelegate: RoomOpenDelegate = object : RoomOpenDelegate(1,
         "d8fa1f30d4ea035570d4be1805af37be", "79c9e6fb7f3d365abf255ea0d694e851") {
@@ -298,6 +302,7 @@ public class AetherTvDatabase_Impl : AetherTvDatabase() {
     _typeConvertersMap.put(EpgDao::class, EpgDao_Impl.getRequiredConverters())
     _typeConvertersMap.put(FavoriteDao::class, FavoriteDao_Impl.getRequiredConverters())
     _typeConvertersMap.put(WatchHistoryDao::class, WatchHistoryDao_Impl.getRequiredConverters())
+    _typeConvertersMap.put(FilterRuleDao::class, FilterRuleDao_Impl.getRequiredConverters())
     return _typeConvertersMap
   }
 
@@ -320,4 +325,6 @@ public class AetherTvDatabase_Impl : AetherTvDatabase() {
   public override fun favoriteDao(): FavoriteDao = _favoriteDao.value
 
   public override fun watchHistoryDao(): WatchHistoryDao = _watchHistoryDao.value
+
+  public override fun filterRuleDao(): FilterRuleDao = _filterRuleDao.value
 }

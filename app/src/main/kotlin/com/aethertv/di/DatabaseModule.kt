@@ -6,6 +6,7 @@ import com.aethertv.data.local.AetherTvDatabase
 import com.aethertv.data.local.ChannelDao
 import com.aethertv.data.local.EpgDao
 import com.aethertv.data.local.FavoriteDao
+import com.aethertv.data.local.FilterRuleDao
 import com.aethertv.data.local.WatchHistoryDao
 import dagger.Module
 import dagger.Provides
@@ -39,4 +40,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWatchHistoryDao(db: AetherTvDatabase): WatchHistoryDao = db.watchHistoryDao()
+
+    @Provides
+    fun provideFilterRuleDao(db: AetherTvDatabase): FilterRuleDao = db.filterRuleDao()
 }

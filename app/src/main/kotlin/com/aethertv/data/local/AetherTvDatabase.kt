@@ -28,4 +28,5 @@ abstract class AetherTvDatabase : RoomDatabase() {
     abstract fun epgDao(): EpgDao
     abstract fun favoriteDao(): FavoriteDao
     abstract fun watchHistoryDao(): WatchHistoryDao
+    abstract fun filterRuleDao(): FilterRuleDao
 }

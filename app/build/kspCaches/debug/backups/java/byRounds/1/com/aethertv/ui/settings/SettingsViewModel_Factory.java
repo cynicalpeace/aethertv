@@ -1,6 +1,7 @@
 package com.aethertv.ui.settings;
 
 import com.aethertv.data.local.ChannelDao;
+import com.aethertv.data.local.FilterRuleDao;
 import com.aethertv.data.local.WatchHistoryDao;
 import com.aethertv.data.preferences.SettingsDataStore;
 import com.aethertv.data.repository.EpgRepository;
@@ -52,13 +53,16 @@ public final class SettingsViewModel_Factory implements Factory<SettingsViewMode
 
   private final Provider<XmltvParser> xmltvParserProvider;
 
+  private final Provider<FilterRuleDao> filterRuleDaoProvider;
+
   public SettingsViewModel_Factory(Provider<UpdateRepository> updateRepositoryProvider,
       Provider<WatchHistoryDao> watchHistoryDaoProvider,
       Provider<StreamVerifier> streamVerifierProvider, Provider<ChannelDao> channelDaoProvider,
       Provider<StreamEngine> streamEngineProvider,
       Provider<AceStreamEngine> aceStreamEngineProvider,
       Provider<SettingsDataStore> settingsDataStoreProvider,
-      Provider<EpgRepository> epgRepositoryProvider, Provider<XmltvParser> xmltvParserProvider) {
+      Provider<EpgRepository> epgRepositoryProvider, Provider<XmltvParser> xmltvParserProvider,
+      Provider<FilterRuleDao> filterRuleDaoProvider) {
     this.updateRepositoryProvider = updateRepositoryProvider;
     this.watchHistoryDaoProvider = watchHistoryDaoProvider;
     this.streamVerifierProvider = streamVerifierProvider;
@@ -68,11 +72,12 @@ public final class SettingsViewModel_Factory implements Factory<SettingsViewMode
     this.settingsDataStoreProvider = settingsDataStoreProvider;
     this.epgRepositoryProvider = epgRepositoryProvider;
     this.xmltvParserProvider = xmltvParserProvider;
+    this.filterRuleDaoProvider = filterRuleDaoProvider;
   }
 
   @Override
   public SettingsViewModel get() {
-    return newInstance(updateRepositoryProvider.get(), watchHistoryDaoProvider.get(), streamVerifierProvider.get(), channelDaoProvider.get(), streamEngineProvider.get(), aceStreamEngineProvider.get(), settingsDataStoreProvider.get(), epgRepositoryProvider.get(), xmltvParserProvider.get());
+    return newInstance(updateRepositoryProvider.get(), watchHistoryDaoProvider.get(), streamVerifierProvider.get(), channelDaoProvider.get(), streamEngineProvider.get(), aceStreamEngineProvider.get(), settingsDataStoreProvider.get(), epgRepositoryProvider.get(), xmltvParserProvider.get(), filterRuleDaoProvider.get());
   }
 
   public static SettingsViewModel_Factory create(
@@ -84,8 +89,9 @@ public final class SettingsViewModel_Factory implements Factory<SettingsViewMode
       javax.inject.Provider<AceStreamEngine> aceStreamEngineProvider,
       javax.inject.Provider<SettingsDataStore> settingsDataStoreProvider,
       javax.inject.Provider<EpgRepository> epgRepositoryProvider,
-      javax.inject.Provider<XmltvParser> xmltvParserProvider) {
-    return new SettingsViewModel_Factory(Providers.asDaggerProvider(updateRepositoryProvider), Providers.asDaggerProvider(watchHistoryDaoProvider), Providers.asDaggerProvider(streamVerifierProvider), Providers.asDaggerProvider(channelDaoProvider), Providers.asDaggerProvider(streamEngineProvider), Providers.asDaggerProvider(aceStreamEngineProvider), Providers.asDaggerProvider(settingsDataStoreProvider), Providers.asDaggerProvider(epgRepositoryProvider), Providers.asDaggerProvider(xmltvParserProvider));
+      javax.inject.Provider<XmltvParser> xmltvParserProvider,
+      javax.inject.Provider<FilterRuleDao> filterRuleDaoProvider) {
+    return new SettingsViewModel_Factory(Providers.asDaggerProvider(updateRepositoryProvider), Providers.asDaggerProvider(watchHistoryDaoProvider), Providers.asDaggerProvider(streamVerifierProvider), Providers.asDaggerProvider(channelDaoProvider), Providers.asDaggerProvider(streamEngineProvider), Providers.asDaggerProvider(aceStreamEngineProvider), Providers.asDaggerProvider(settingsDataStoreProvider), Providers.asDaggerProvider(epgRepositoryProvider), Providers.asDaggerProvider(xmltvParserProvider), Providers.asDaggerProvider(filterRuleDaoProvider));
   }
 
   public static SettingsViewModel_Factory create(
@@ -95,14 +101,16 @@ public final class SettingsViewModel_Factory implements Factory<SettingsViewMode
       Provider<StreamEngine> streamEngineProvider,
       Provider<AceStreamEngine> aceStreamEngineProvider,
       Provider<SettingsDataStore> settingsDataStoreProvider,
-      Provider<EpgRepository> epgRepositoryProvider, Provider<XmltvParser> xmltvParserProvider) {
-    return new SettingsViewModel_Factory(updateRepositoryProvider, watchHistoryDaoProvider, streamVerifierProvider, channelDaoProvider, streamEngineProvider, aceStreamEngineProvider, settingsDataStoreProvider, epgRepositoryProvider, xmltvParserProvider);
+      Provider<EpgRepository> epgRepositoryProvider, Provider<XmltvParser> xmltvParserProvider,
+      Provider<FilterRuleDao> filterRuleDaoProvider) {
+    return new SettingsViewModel_Factory(updateRepositoryProvider, watchHistoryDaoProvider, streamVerifierProvider, channelDaoProvider, streamEngineProvider, aceStreamEngineProvider, settingsDataStoreProvider, epgRepositoryProvider, xmltvParserProvider, filterRuleDaoProvider);
   }
 
   public static SettingsViewModel newInstance(UpdateRepository updateRepository,
       WatchHistoryDao watchHistoryDao, StreamVerifier streamVerifier, ChannelDao channelDao,
       StreamEngine streamEngine, AceStreamEngine aceStreamEngine,
-      SettingsDataStore settingsDataStore, EpgRepository epgRepository, XmltvParser xmltvParser) {
-    return new SettingsViewModel(updateRepository, watchHistoryDao, streamVerifier, channelDao, streamEngine, aceStreamEngine, settingsDataStore, epgRepository, xmltvParser);
+      SettingsDataStore settingsDataStore, EpgRepository epgRepository, XmltvParser xmltvParser,
+      FilterRuleDao filterRuleDao) {
+    return new SettingsViewModel(updateRepository, watchHistoryDao, streamVerifier, channelDao, streamEngine, aceStreamEngine, settingsDataStore, epgRepository, xmltvParser, filterRuleDao);
   }
 }

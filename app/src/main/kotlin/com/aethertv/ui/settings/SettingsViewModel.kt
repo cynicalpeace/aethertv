@@ -4,7 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.local.ChannelDao
+import com.aethertv.data.local.FilterRuleDao
 import com.aethertv.data.local.WatchHistoryDao
+import com.aethertv.data.local.entity.FilterRuleEntity
 import com.aethertv.data.preferences.SettingsDataStore
 import com.aethertv.data.repository.EpgRepository
 import com.aethertv.data.repository.GitHubRelease
@@ -20,9 +22,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -52,6 +56,14 @@ data class EpgSyncState(
     val error: String? = null
 )
 
+data class EpgMatchState(
+    val totalChannels: Int = 0,
+    val matchedChannels: Int = 0,
+    val availableEpgChannels: Int = 0,
+    val isMatching: Boolean = false,
+    val matchProgress: Int = 0
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val updateRepository: UpdateRepository,
@@ -63,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore,
     private val epgRepository: EpgRepository,
     private val xmltvParser: XmltvParser,
+    private val filterRuleDao: FilterRuleDao,
 ) : ViewModel() {
     
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -82,6 +95,9 @@ class SettingsViewModel @Inject constructor(
     
     private val _epgState = MutableStateFlow(EpgSyncState())
     val epgState: StateFlow<EpgSyncState> = _epgState.asStateFlow()
+    
+    val filterRules: StateFlow<List<FilterRuleEntity>> = filterRuleDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
     private var pendingRelease: GitHubRelease? = null
     private var pendingApkFile: File? = null
@@ -343,5 +359,87 @@ class SettingsViewModel @Inject constructor(
         _updateState.value = UpdateState.Idle
         pendingRelease = null
         pendingApkFile = null
+    }
+    
+    // EPG Matching
+    private val _epgMatchState = MutableStateFlow(EpgMatchState())
+    val epgMatchState: StateFlow<EpgMatchState> = _epgMatchState.asStateFlow()
+    
+    fun loadEpgMatchData() {
+        viewModelScope.launch {
+            val channels = channelDao.observeAll().first()
+            val epgChannels = epgRepository.observeAllEpgChannels().first()
+            
+            val unmatchedCount = channels.count { it.epgChannelId == null }
+            val matchedCount = channels.size - unmatchedCount
+            
+            _epgMatchState.value = EpgMatchState(
+                totalChannels = channels.size,
+                matchedChannels = matchedCount,
+                availableEpgChannels = epgChannels.size
+            )
+        }
+    }
+    
+    fun autoMatchEpg() {
+        viewModelScope.launch {
+            _epgMatchState.value = _epgMatchState.value.copy(isMatching = true, matchProgress = 0)
+            
+            val channels = channelDao.observeAll().first()
+            val epgChannels = epgRepository.observeAllEpgChannels().first()
+            
+            var matched = 0
+            channels.forEachIndexed { index, channel ->
+                if (channel.epgChannelId == null) {
+                    val match = com.aethertv.epg.EpgMatcher().findBestMatchByName(channel.name, epgChannels)
+                    if (match != null) {
+                        channelDao.updateEpgMapping(channel.infohash, match.xmltvId)
+                        matched++
+                    }
+                }
+                _epgMatchState.value = _epgMatchState.value.copy(
+                    matchProgress = ((index + 1) * 100) / channels.size
+                )
+            }
+            
+            _epgMatchState.value = _epgMatchState.value.copy(isMatching = false)
+            loadEpgMatchData()
+            _dataMessage.value = "Auto-matched $matched channels to EPG"
+        }
+    }
+    
+    fun clearEpgMappings() {
+        viewModelScope.launch {
+            val channels = channelDao.observeAll().first()
+            channels.forEach { channel ->
+                channelDao.updateEpgMapping(channel.infohash, null)
+            }
+            loadEpgMatchData()
+            _dataMessage.value = "EPG mappings cleared"
+        }
+    }
+    
+    // Filter rule management
+    fun addFilterRule(type: String, pattern: String) {
+        if (pattern.isBlank()) return
+        viewModelScope.launch {
+            filterRuleDao.insert(
+                FilterRuleEntity(type = type, pattern = pattern.trim(), isEnabled = true)
+            )
+            _dataMessage.value = "Filter rule added"
+        }
+    }
+    
+    fun toggleFilterRule(rule: FilterRuleEntity) {
+        viewModelScope.launch {
+            filterRuleDao.setEnabled(rule.id, !rule.isEnabled)
+        }
+    }
+    
+    fun deleteFilterRule(rule: FilterRuleEntity) {
+        viewModelScope.launch {
+            filterRuleDao.delete(rule)
+            _dataMessage.value = "Filter rule deleted"
+        }
     }
 }
