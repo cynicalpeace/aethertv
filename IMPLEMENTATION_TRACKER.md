@@ -12,7 +12,7 @@
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
-| Phase 1: MVP App | 🔄 In Progress | 40% |
+| Phase 1: MVP App | 🔄 In Progress | 65% |
 | Phase 2: Verification + Polish | ⏳ Pending | 0% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
@@ -28,6 +28,8 @@
 | v0.3.0-debug | 2026-02-08 | **Settings screen with in-app updates** |
 | v0.3.1-debug | 2026-02-08 | Fixed version display, scrollable settings |
 | v0.4.0-debug | 2026-02-08 | **AceStream scraper wiring, refresh button, status indicator** |
+| v0.5.0-debug | 2026-02-08 | Full player with ExoPlayer, overlays, D-pad controls |
+| v0.6.0-debug | 2026-02-08 | **Channel switching during playback, Search screen** |
 
 ---
 
@@ -63,14 +65,14 @@
 - [x] **1.5** ChannelCard composable with D-pad focus ✅ v0.2.0
 - [x] **1.6** Home screen with category rows ✅ v0.2.0 (mock data)
 - [ ] **1.7** Favorites functionality (long-press)
-- [ ] **1.8** Basic search UI
+- [x] **1.8** Basic search UI ✅ v0.6.0
 - [x] **1.9** Settings screen with in-app updates ✅ v0.3.0
 
 ### Week 3: Player
-- [ ] **1.9** ExoPlayer integration with AceStream
-- [ ] **1.10** Player screen with overlay controls
-- [ ] **1.11** Channel switching (D-pad up/down)
-- [ ] **1.12** Buffer indicator
+- [x] **1.10** ExoPlayer integration with AceStream ✅ v0.5.0
+- [x] **1.11** Player screen with overlay controls ✅ v0.5.0
+- [x] **1.12** Channel switching (D-pad up/down) ✅ v0.6.0
+- [ ] **1.13** Buffer indicator
 
 ### Week 4: EPG
 - [ ] **1.13** XMLTV streaming SAX parser
