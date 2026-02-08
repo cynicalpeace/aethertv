@@ -141,6 +141,21 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // EPG section
+            SettingsSection(title = "TV Guide (EPG)") {
+                val epgState by viewModel.epgState.collectAsState()
+                
+                EpgSection(
+                    state = epgState,
+                    onUrlChange = { viewModel.updateEpgUrl(it) },
+                    onSync = { viewModel.syncEpg() },
+                    onCancel = { viewModel.cancelEpgSync() },
+                    onClear = { viewModel.clearEpg() }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             // Playback settings placeholder
             SettingsSection(title = "Playback") {
                 SettingsRow(label = "Buffer Size", value = "Default")
@@ -287,6 +302,149 @@ private fun SettingsRow(
             text = value,
             color = Color.Gray,
             fontSize = 16.sp
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun EpgSection(
+    state: EpgSyncState,
+    onUrlChange: (String) -> Unit,
+    onSync: () -> Unit,
+    onCancel: () -> Unit,
+    onClear: () -> Unit
+) {
+    var urlText by remember(state.url) { mutableStateOf(state.url) }
+    val focusRequester = remember { FocusRequester() }
+    
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Enter an XMLTV URL to show program info in the TV Guide.",
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
+        
+        // URL input
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester)
+                    .focusable(),
+                shape = RoundedCornerShape(8.dp),
+                colors = SurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A))
+            ) {
+                androidx.compose.foundation.text.BasicTextField(
+                    value = urlText,
+                    onValueChange = { 
+                        urlText = it
+                        onUrlChange(it)
+                    },
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = Color.White,
+                        fontSize = 14.sp
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (urlText.isEmpty()) {
+                                Text(
+                                    text = "https://example.com/epg.xml",
+                                    color = Color.Gray,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Last sync info
+        if (state.lastSync > 0) {
+            val syncTime = java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.getDefault())
+                .format(java.util.Date(state.lastSync))
+            Text(
+                text = "Last sync: $syncTime",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
+        
+        // Sync status
+        if (state.isSyncing) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Syncing... ${state.channelCount} channels, ${state.programCount} programs",
+                    color = Color(0xFF00B4D8),
+                    fontSize = 14.sp
+                )
+                // Progress indicator
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(Color(0xFF333333), RoundedCornerShape(2.dp))
+                ) {
+                    // Indeterminate progress
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.3f)
+                            .height(4.dp)
+                            .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
+                    )
+                }
+            }
+        }
+        
+        // Error message
+        state.error?.let { error ->
+            Text(
+                text = "Error: $error",
+                color = Color(0xFFF44336),
+                fontSize = 12.sp
+            )
+        }
+        
+        // Action buttons
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (state.isSyncing) {
+                FocusableButton(
+                    text = "Cancel",
+                    onClick = onCancel,
+                    focusRequester = null
+                )
+            } else {
+                FocusableButton(
+                    text = "Sync Now",
+                    onClick = onSync,
+                    focusRequester = null,
+                    primary = true
+                )
+                if (state.lastSync > 0) {
+                    FocusableButton(
+                        text = "Clear EPG",
+                        onClick = onClear,
+                        focusRequester = null
+                    )
+                }
+            }
+        }
+        
+        // Popular EPG sources hint
+        Text(
+            text = "Popular sources: iptv-org.github.io, epg.best",
+            color = Color.DarkGray,
+            fontSize = 11.sp
         )
     }
 }

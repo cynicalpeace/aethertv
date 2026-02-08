@@ -1,17 +1,22 @@
 package com.aethertv.ui.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.local.ChannelDao
 import com.aethertv.data.local.WatchHistoryDao
+import com.aethertv.data.preferences.SettingsDataStore
+import com.aethertv.data.repository.EpgRepository
 import com.aethertv.data.repository.GitHubRelease
 import com.aethertv.data.repository.UpdateRepository
 import com.aethertv.data.repository.UpdateState
 import com.aethertv.engine.AceStreamEngine
 import com.aethertv.engine.StreamEngine
+import com.aethertv.epg.XmltvParser
 import com.aethertv.verification.StreamVerifier
 import com.aethertv.verification.VerificationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +24,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.URL
 import javax.inject.Inject
 
 data class VerificationProgress(
@@ -36,6 +43,15 @@ data class EngineState(
     val isRunning: Boolean = false
 )
 
+data class EpgSyncState(
+    val url: String = "",
+    val lastSync: Long = 0L,
+    val isSyncing: Boolean = false,
+    val channelCount: Int = 0,
+    val programCount: Int = 0,
+    val error: String? = null
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val updateRepository: UpdateRepository,
@@ -44,6 +60,9 @@ class SettingsViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val streamEngine: StreamEngine,
     private val aceStreamEngine: AceStreamEngine,
+    private val settingsDataStore: SettingsDataStore,
+    private val epgRepository: EpgRepository,
+    private val xmltvParser: XmltvParser,
 ) : ViewModel() {
     
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -61,13 +80,132 @@ class SettingsViewModel @Inject constructor(
     private val _engineState = MutableStateFlow(EngineState())
     val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
     
+    private val _epgState = MutableStateFlow(EpgSyncState())
+    val epgState: StateFlow<EpgSyncState> = _epgState.asStateFlow()
+    
     private var pendingRelease: GitHubRelease? = null
     private var pendingApkFile: File? = null
     private var verificationJob: Job? = null
+    private var epgSyncJob: Job? = null
+    
+    companion object {
+        private const val TAG = "SettingsViewModel"
+    }
     
     init {
         _currentVersion.value = updateRepository.getCurrentVersion()
         refreshEngineStatus()
+        loadEpgSettings()
+    }
+    
+    private fun loadEpgSettings() {
+        viewModelScope.launch {
+            val url = settingsDataStore.epgUrl.first()
+            val lastSync = settingsDataStore.epgLastSync.first()
+            _epgState.value = _epgState.value.copy(
+                url = url,
+                lastSync = lastSync
+            )
+        }
+    }
+    
+    fun updateEpgUrl(url: String) {
+        _epgState.value = _epgState.value.copy(url = url, error = null)
+        viewModelScope.launch {
+            settingsDataStore.setEpgUrl(url)
+        }
+    }
+    
+    fun syncEpg() {
+        val url = _epgState.value.url
+        if (url.isBlank()) {
+            _epgState.value = _epgState.value.copy(error = "Please enter an EPG URL")
+            return
+        }
+        
+        if (_epgState.value.isSyncing) return
+        
+        epgSyncJob = viewModelScope.launch {
+            _epgState.value = _epgState.value.copy(
+                isSyncing = true,
+                error = null,
+                channelCount = 0,
+                programCount = 0
+            )
+            
+            try {
+                var channelCount = 0
+                var programCount = 0
+                
+                withContext(Dispatchers.IO) {
+                    val connection = URL(url).openConnection()
+                    connection.connectTimeout = 30_000
+                    connection.readTimeout = 60_000
+                    
+                    connection.getInputStream().use { inputStream ->
+                        // Clear existing EPG data
+                        epgRepository.clearAll()
+                        
+                        xmltvParser.parse(
+                            inputStream = inputStream,
+                            onChannel = { channel ->
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    epgRepository.insertChannels(listOf(channel))
+                                    channelCount++
+                                    _epgState.value = _epgState.value.copy(channelCount = channelCount)
+                                }
+                            },
+                            onProgram = { program ->
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    epgRepository.insertPrograms(listOf(program))
+                                    programCount++
+                                    if (programCount % 100 == 0) {
+                                        _epgState.value = _epgState.value.copy(programCount = programCount)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+                
+                val now = System.currentTimeMillis()
+                settingsDataStore.setEpgLastSync(now)
+                
+                _epgState.value = _epgState.value.copy(
+                    isSyncing = false,
+                    lastSync = now,
+                    channelCount = channelCount,
+                    programCount = programCount
+                )
+                
+                _dataMessage.value = "EPG synced: $channelCount channels, $programCount programs"
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "EPG sync failed", e)
+                _epgState.value = _epgState.value.copy(
+                    isSyncing = false,
+                    error = e.message ?: "Sync failed"
+                )
+            }
+        }
+    }
+    
+    fun cancelEpgSync() {
+        epgSyncJob?.cancel()
+        _epgState.value = _epgState.value.copy(isSyncing = false)
+    }
+    
+    fun clearEpg() {
+        viewModelScope.launch {
+            epgRepository.clearAll()
+            settingsDataStore.setEpgLastSync(0L)
+            _epgState.value = _epgState.value.copy(
+                lastSync = 0L,
+                channelCount = 0,
+                programCount = 0
+            )
+            _dataMessage.value = "EPG data cleared"
+        }
     }
     
     fun refreshEngineStatus() {

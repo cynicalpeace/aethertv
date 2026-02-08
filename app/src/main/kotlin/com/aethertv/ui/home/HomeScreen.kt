@@ -85,6 +85,11 @@ fun HomeScreen(
                     text = "🔍 Search",
                     onClick = onNavigateToSearch
                 )
+                // Guide button
+                TopBarButton(
+                    text = "📺 Guide",
+                    onClick = onNavigateToGuide
+                )
                 // Refresh button
                 TopBarButton(
                     text = "🔄 Refresh",

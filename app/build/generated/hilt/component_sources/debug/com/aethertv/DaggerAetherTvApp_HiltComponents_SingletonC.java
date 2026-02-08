@@ -562,7 +562,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
           return (T) new SearchViewModel(viewModelCImpl.searchChannelsUseCase());
 
           case 5: // com.aethertv.ui.settings.SettingsViewModel 
-          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get(), singletonCImpl.watchHistoryDao(), singletonCImpl.streamVerifierProvider.get(), singletonCImpl.channelDao(), singletonCImpl.aceStreamEngineProvider.get(), singletonCImpl.aceStreamEngineProvider.get());
+          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get(), singletonCImpl.watchHistoryDao(), singletonCImpl.streamVerifierProvider.get(), singletonCImpl.channelDao(), singletonCImpl.aceStreamEngineProvider.get(), singletonCImpl.aceStreamEngineProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get(), singletonCImpl.epgRepositoryImplProvider.get(), singletonCImpl.xmltvParserProvider.get());
 
           default: throw new AssertionError(id);
         }

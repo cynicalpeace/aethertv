@@ -23,8 +23,11 @@ class SettingsDataStore @Inject constructor(
     val availabilityThreshold: Flow<Float> = dataStore.data.map { it[AVAILABILITY_THRESHOLD] ?: 0.5f }
 
     // EPG settings
+    val epgUrl: Flow<String> = dataStore.data.map { it[EPG_URL] ?: "" }
     val epgCountries: Flow<String> = dataStore.data.map { it[EPG_COUNTRIES] ?: "" }
     val epgRefreshHour: Flow<Int> = dataStore.data.map { it[EPG_REFRESH_HOUR] ?: 3 }
+    val epgLastSync: Flow<Long> = dataStore.data.map { it[EPG_LAST_SYNC] ?: 0L }
+    val epgAutoRefresh: Flow<Boolean> = dataStore.data.map { it[EPG_AUTO_REFRESH] ?: true }
 
     // Verification settings
     val autoVerifyEnabled: Flow<Boolean> = dataStore.data.map { it[AUTO_VERIFY] ?: true }
@@ -52,12 +55,24 @@ class SettingsDataStore @Inject constructor(
         dataStore.edit { it[AVAILABILITY_THRESHOLD] = threshold }
     }
 
+    suspend fun setEpgUrl(url: String) {
+        dataStore.edit { it[EPG_URL] = url }
+    }
+
     suspend fun setEpgCountries(countries: String) {
         dataStore.edit { it[EPG_COUNTRIES] = countries }
     }
 
     suspend fun setEpgRefreshHour(hour: Int) {
         dataStore.edit { it[EPG_REFRESH_HOUR] = hour }
+    }
+
+    suspend fun setEpgLastSync(time: Long) {
+        dataStore.edit { it[EPG_LAST_SYNC] = time }
+    }
+
+    suspend fun setEpgAutoRefresh(enabled: Boolean) {
+        dataStore.edit { it[EPG_AUTO_REFRESH] = enabled }
     }
 
     suspend fun setAutoVerifyEnabled(enabled: Boolean) {
@@ -96,8 +111,11 @@ class SettingsDataStore @Inject constructor(
         private val AUTO_REFRESH = booleanPreferencesKey("auto_refresh")
         private val REFRESH_INTERVAL = intPreferencesKey("refresh_interval_hours")
         private val AVAILABILITY_THRESHOLD = floatPreferencesKey("availability_threshold")
+        private val EPG_URL = stringPreferencesKey("epg_url")
         private val EPG_COUNTRIES = stringPreferencesKey("epg_countries")
         private val EPG_REFRESH_HOUR = intPreferencesKey("epg_refresh_hour")
+        private val EPG_LAST_SYNC = longPreferencesKey("epg_last_sync")
+        private val EPG_AUTO_REFRESH = booleanPreferencesKey("epg_auto_refresh")
         private val AUTO_VERIFY = booleanPreferencesKey("auto_verify")
         private val VERIFY_SCOPE = stringPreferencesKey("verify_scope")
         private val VERIFY_INTERVAL = intPreferencesKey("verify_interval_minutes")
