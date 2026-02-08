@@ -13,7 +13,7 @@
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
 | Phase 1: MVP App | ✅ Complete | 100% |
-| Phase 2: Verification + Polish | ⏳ Pending | 0% |
+| Phase 2: Verification + Polish | 🔄 In Progress | 30% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
 ---
@@ -31,6 +31,7 @@
 | v0.5.0-debug | 2026-02-08 | Full player with ExoPlayer, overlays, D-pad controls |
 | v0.6.0-debug | 2026-02-08 | **Channel switching during playback, Search screen** |
 | **v1.0.0-debug** | 2026-02-08 | **Phase 1 MVP Complete** — First-run flow, favorites, watch history, buffer indicator |
+| v1.1.0-debug | 2026-02-08 | Phase 2: Stream verification with quality detection |
 
 ---
 

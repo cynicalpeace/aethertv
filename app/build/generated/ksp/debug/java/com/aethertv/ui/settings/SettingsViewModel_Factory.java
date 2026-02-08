@@ -1,7 +1,9 @@
 package com.aethertv.ui.settings;
 
+import com.aethertv.data.local.ChannelDao;
 import com.aethertv.data.local.WatchHistoryDao;
 import com.aethertv.data.repository.UpdateRepository;
+import com.aethertv.verification.StreamVerifier;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.Provider;
@@ -31,31 +33,41 @@ public final class SettingsViewModel_Factory implements Factory<SettingsViewMode
 
   private final Provider<WatchHistoryDao> watchHistoryDaoProvider;
 
+  private final Provider<StreamVerifier> streamVerifierProvider;
+
+  private final Provider<ChannelDao> channelDaoProvider;
+
   public SettingsViewModel_Factory(Provider<UpdateRepository> updateRepositoryProvider,
-      Provider<WatchHistoryDao> watchHistoryDaoProvider) {
+      Provider<WatchHistoryDao> watchHistoryDaoProvider,
+      Provider<StreamVerifier> streamVerifierProvider, Provider<ChannelDao> channelDaoProvider) {
     this.updateRepositoryProvider = updateRepositoryProvider;
     this.watchHistoryDaoProvider = watchHistoryDaoProvider;
+    this.streamVerifierProvider = streamVerifierProvider;
+    this.channelDaoProvider = channelDaoProvider;
   }
 
   @Override
   public SettingsViewModel get() {
-    return newInstance(updateRepositoryProvider.get(), watchHistoryDaoProvider.get());
+    return newInstance(updateRepositoryProvider.get(), watchHistoryDaoProvider.get(), streamVerifierProvider.get(), channelDaoProvider.get());
   }
 
   public static SettingsViewModel_Factory create(
       javax.inject.Provider<UpdateRepository> updateRepositoryProvider,
-      javax.inject.Provider<WatchHistoryDao> watchHistoryDaoProvider) {
-    return new SettingsViewModel_Factory(Providers.asDaggerProvider(updateRepositoryProvider), Providers.asDaggerProvider(watchHistoryDaoProvider));
+      javax.inject.Provider<WatchHistoryDao> watchHistoryDaoProvider,
+      javax.inject.Provider<StreamVerifier> streamVerifierProvider,
+      javax.inject.Provider<ChannelDao> channelDaoProvider) {
+    return new SettingsViewModel_Factory(Providers.asDaggerProvider(updateRepositoryProvider), Providers.asDaggerProvider(watchHistoryDaoProvider), Providers.asDaggerProvider(streamVerifierProvider), Providers.asDaggerProvider(channelDaoProvider));
   }
 
   public static SettingsViewModel_Factory create(
       Provider<UpdateRepository> updateRepositoryProvider,
-      Provider<WatchHistoryDao> watchHistoryDaoProvider) {
-    return new SettingsViewModel_Factory(updateRepositoryProvider, watchHistoryDaoProvider);
+      Provider<WatchHistoryDao> watchHistoryDaoProvider,
+      Provider<StreamVerifier> streamVerifierProvider, Provider<ChannelDao> channelDaoProvider) {
+    return new SettingsViewModel_Factory(updateRepositoryProvider, watchHistoryDaoProvider, streamVerifierProvider, channelDaoProvider);
   }
 
   public static SettingsViewModel newInstance(UpdateRepository updateRepository,
-      WatchHistoryDao watchHistoryDao) {
-    return new SettingsViewModel(updateRepository, watchHistoryDao);
+      WatchHistoryDao watchHistoryDao, StreamVerifier streamVerifier, ChannelDao channelDao) {
+    return new SettingsViewModel(updateRepository, watchHistoryDao, streamVerifier, channelDao);
   }
 }

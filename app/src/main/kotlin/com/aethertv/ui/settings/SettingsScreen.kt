@@ -99,6 +99,64 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Verification section
+            SettingsSection(title = "Stream Verification") {
+                val progress by viewModel.verificationProgress.collectAsState()
+                
+                Text(
+                    text = "Check which channels are currently live. This may take a while.",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                
+                if (progress.isRunning) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Verifying: ${progress.current}/${progress.total}",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "🟢 ${progress.liveCount} live channels found",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 14.sp
+                        )
+                        // Progress bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(Color(0xFF333333), RoundedCornerShape(2.dp))
+                        ) {
+                            val fraction = if (progress.total > 0) 
+                                progress.current.toFloat() / progress.total 
+                            else 0f
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction)
+                                    .height(4.dp)
+                                    .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FocusableButton(
+                            text = "Stop",
+                            onClick = { viewModel.stopVerification() },
+                            focusRequester = null
+                        )
+                    }
+                } else {
+                    FocusableButton(
+                        text = "Verify All Channels",
+                        onClick = { viewModel.startVerification() },
+                        focusRequester = null
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             // Data section
             SettingsSection(title = "Data") {
                 val dataMessage by viewModel.dataMessage.collectAsState()

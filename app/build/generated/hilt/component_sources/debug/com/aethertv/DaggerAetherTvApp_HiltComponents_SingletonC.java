@@ -72,6 +72,7 @@ import com.aethertv.ui.setup.FirstRunViewModel;
 import com.aethertv.ui.setup.FirstRunViewModel_HiltModules;
 import com.aethertv.ui.setup.FirstRunViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.aethertv.ui.setup.FirstRunViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.aethertv.verification.StreamVerifier;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import dagger.hilt.android.ActivityRetainedLifecycle;
@@ -559,7 +560,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
           return (T) new SearchViewModel(viewModelCImpl.searchChannelsUseCase());
 
           case 5: // com.aethertv.ui.settings.SettingsViewModel 
-          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get(), singletonCImpl.watchHistoryDao());
+          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get(), singletonCImpl.watchHistoryDao(), singletonCImpl.streamVerifierProvider.get(), singletonCImpl.channelDao());
 
           default: throw new AssertionError(id);
         }
@@ -667,6 +668,8 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     private Provider<UpdateRepository> provideUpdateRepositoryProvider;
 
+    private Provider<StreamVerifier> streamVerifierProvider;
+
     private SingletonCImpl(ApplicationContextModule applicationContextModuleParam) {
       this.applicationContextModule = applicationContextModuleParam;
       initialize(applicationContextModuleParam);
@@ -717,6 +720,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
       this.scraperWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<ScraperWorker_AssistedFactory>(singletonCImpl, 8));
       this.provideExoPlayerProvider = DoubleCheck.provider(new SwitchingProvider<ExoPlayer>(singletonCImpl, 11));
       this.provideUpdateRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<UpdateRepository>(singletonCImpl, 12));
+      this.streamVerifierProvider = DoubleCheck.provider(new SwitchingProvider<StreamVerifier>(singletonCImpl, 13));
     }
 
     @Override
@@ -806,6 +810,9 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
           case 12: // com.aethertv.data.repository.UpdateRepository 
           return (T) AppModule_ProvideUpdateRepositoryFactory.provideUpdateRepository(singletonCImpl.provideHttpClientProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 13: // com.aethertv.verification.StreamVerifier 
+          return (T) new StreamVerifier(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideAceStreamEngineClientProvider.get());
 
           default: throw new AssertionError(id);
         }
