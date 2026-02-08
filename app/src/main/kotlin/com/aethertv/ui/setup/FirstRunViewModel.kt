@@ -1,6 +1,11 @@
 package com.aethertv.ui.setup
 
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.util.Log
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.MockDataProvider
@@ -12,12 +17,24 @@ import com.aethertv.engine.InstallResult
 import com.aethertv.engine.StreamEngine
 import com.aethertv.data.remote.AceStreamChannel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
+
+enum class InstallState {
+    IDLE,
+    EXTRACTING,
+    INSTALLING,
+    WAITING,
+    SUCCESS,
+    FAILED
+}
 
 data class FirstRunUiState(
     val step: SetupStep = SetupStep.WELCOME,
@@ -25,35 +42,70 @@ data class FirstRunUiState(
     val statusMessage: String = "",
     val engineInstalled: Boolean = true,
     val engineInfo: String = "",
+    val installState: InstallState = InstallState.IDLE,
+    val installProgress: Float = 0f,
+    val installError: String? = null,
 )
 
 @HiltViewModel
 class FirstRunViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val streamEngine: StreamEngine,
-    private val aceStreamEngine: AceStreamEngine, // For install helpers
+    private val aceStreamEngine: AceStreamEngine,
     private val channelRepository: ChannelRepository,
     private val settingsDataStore: SettingsDataStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FirstRunUiState())
     val uiState: StateFlow<FirstRunUiState> = _uiState.asStateFlow()
+    
+    // Intent for starting installation, observed by UI
+    private val _installIntent = MutableStateFlow<Intent?>(null)
+    val installIntent: StateFlow<Intent?> = _installIntent.asStateFlow()
 
     companion object {
         private const val TAG = "FirstRunViewModel"
+        private const val ACESTREAM_PACKAGE = "org.acestream.core"
+        private const val BUNDLED_APK_NAME = "acestream-engine.apk"
     }
     
     init {
-        // Check engine status on init
+        checkEngineStatus()
+    }
+    
+    private fun checkEngineStatus() {
+        val isInstalled = isAceStreamInstalled()
         val info = streamEngine.getEngineInfo()
         _uiState.value = _uiState.value.copy(
+            engineInstalled = isInstalled,
             engineInfo = "${info.name} ${info.version ?: "(not installed)"}"
         )
+    }
+    
+    private fun isAceStreamInstalled(): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(ACESTREAM_PACKAGE, 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
     }
 
     fun startScanning() {
         viewModelScope.launch {
+            // First check if engine is installed
+            if (!isAceStreamInstalled()) {
+                _uiState.value = _uiState.value.copy(
+                    step = SetupStep.SCANNING,
+                    engineInstalled = false,
+                    statusMessage = "AceStream Engine required"
+                )
+                return@launch
+            }
+            
             _uiState.value = _uiState.value.copy(
                 step = SetupStep.SCANNING,
+                engineInstalled = true,
                 statusMessage = "Checking streaming engine..."
             )
 
@@ -66,7 +118,6 @@ class FirstRunViewModel @Inject constructor(
                         engineInstalled = false,
                         statusMessage = "Streaming engine not installed"
                     )
-                    // Continue with mock data
                     loadMockData()
                     return@launch
                 }
@@ -75,9 +126,7 @@ class FirstRunViewModel @Inject constructor(
                     loadMockData()
                     return@launch
                 }
-                else -> {
-                    // Engine is available
-                }
+                else -> {}
             }
 
             try {
@@ -104,7 +153,6 @@ class FirstRunViewModel @Inject constructor(
                         statusMessage = "Saving channels..."
                     )
                     
-                    // Convert to AceStreamChannel format for repository
                     val aceChannels = channels.map { it.toAceStreamChannel() }
                     channelRepository.insertFromScraper(aceChannels, System.currentTimeMillis())
                     
@@ -121,8 +169,136 @@ class FirstRunViewModel @Inject constructor(
                 loadMockData()
             }
             
-            // Mark first run as complete
             settingsDataStore.setFirstRunComplete()
+        }
+    }
+    
+    /**
+     * Start bundled APK installation flow.
+     * Extracts APK from assets and triggers system installer.
+     */
+    fun installBundledEngine() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                installState = InstallState.EXTRACTING,
+                installProgress = 0f,
+                installError = null,
+                statusMessage = "Preparing installation..."
+            )
+            
+            try {
+                // Extract APK from assets to cache
+                val apkFile = extractApkFromAssets()
+                
+                if (apkFile == null) {
+                    _uiState.value = _uiState.value.copy(
+                        installState = InstallState.FAILED,
+                        installError = "Failed to extract APK"
+                    )
+                    return@launch
+                }
+                
+                _uiState.value = _uiState.value.copy(
+                    installState = InstallState.INSTALLING,
+                    installProgress = 0.5f,
+                    statusMessage = "Starting installer..."
+                )
+                
+                // Create install intent
+                val intent = createInstallIntent(apkFile)
+                _installIntent.value = intent
+                
+                _uiState.value = _uiState.value.copy(
+                    installState = InstallState.WAITING,
+                    installProgress = 0.75f,
+                    statusMessage = "Waiting for installation..."
+                )
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Installation failed", e)
+                _uiState.value = _uiState.value.copy(
+                    installState = InstallState.FAILED,
+                    installError = e.message ?: "Installation failed"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Called when returning from package installer.
+     */
+    fun onInstallResult() {
+        _installIntent.value = null
+        
+        viewModelScope.launch {
+            // Give system time to complete installation
+            delay(500)
+            
+            if (isAceStreamInstalled()) {
+                _uiState.value = _uiState.value.copy(
+                    installState = InstallState.SUCCESS,
+                    engineInstalled = true,
+                    installProgress = 1f,
+                    statusMessage = "Installation complete!"
+                )
+                
+                delay(1000)
+                
+                // Continue with scanning
+                startScanning()
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    installState = InstallState.FAILED,
+                    installError = "Installation was cancelled or failed"
+                )
+            }
+        }
+    }
+    
+    private suspend fun extractApkFromAssets(): File? {
+        return try {
+            val cacheDir = context.cacheDir
+            val apkFile = File(cacheDir, BUNDLED_APK_NAME)
+            
+            // Delete if exists
+            if (apkFile.exists()) {
+                apkFile.delete()
+            }
+            
+            context.assets.open(BUNDLED_APK_NAME).use { input ->
+                FileOutputStream(apkFile).use { output ->
+                    val buffer = ByteArray(8192)
+                    var read: Int
+                    var total = 0L
+                    val size = input.available().toLong()
+                    
+                    while (input.read(buffer).also { read = it } != -1) {
+                        output.write(buffer, 0, read)
+                        total += read
+                        
+                        val progress = if (size > 0) (total.toFloat() / size) * 0.5f else 0f
+                        _uiState.value = _uiState.value.copy(installProgress = progress)
+                    }
+                }
+            }
+            
+            apkFile
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract APK", e)
+            null
+        }
+    }
+    
+    private fun createInstallIntent(apkFile: File): Intent {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apkFile
+        )
+        
+        return Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
     }
     
@@ -130,11 +306,17 @@ class FirstRunViewModel @Inject constructor(
         aceStreamEngine.openPlayStore()
     }
     
-    fun retryWithEngine() {
+    fun retryInstall() {
         _uiState.value = _uiState.value.copy(
-            step = SetupStep.WELCOME,
-            engineInstalled = true
+            installState = InstallState.IDLE,
+            installError = null
         )
+    }
+    
+    fun skipEngine() {
+        viewModelScope.launch {
+            loadMockData()
+        }
     }
     
     private suspend fun loadMockData() {
@@ -149,7 +331,7 @@ class FirstRunViewModel @Inject constructor(
         
         _uiState.value = _uiState.value.copy(
             step = SetupStep.COMPLETE,
-            channelsFound = 0 // 0 indicates mock data
+            channelsFound = 0
         )
         
         settingsDataStore.setFirstRunComplete()

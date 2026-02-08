@@ -26,20 +26,26 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.aethertv.domain.model.Channel
+import com.aethertv.domain.model.EpgProgram
 
 @Composable
 fun ChannelCard(
     channel: Channel,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    currentProgram: EpgProgram? = null,
+    nextProgram: EpgProgram? = null,
     modifier: Modifier = Modifier,
 ) {
+    val hasEpg = currentProgram != null
+    val cardHeight = if (hasEpg) 140.dp else 120.dp
+
     Card(
         onClick = onClick,
         onLongClick = onLongClick ?: {},
         modifier = modifier
             .width(180.dp)
-            .height(120.dp),
+            .height(cardHeight),
         border = CardDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
@@ -48,6 +54,7 @@ fun ChannelCard(
     ) {
         Box(modifier = Modifier.padding(12.dp)) {
             Column {
+                // Header row: icon, verification dot, favorite
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -73,13 +80,18 @@ fun ChannelCard(
                         )
                     }
                 }
+                
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                // Channel name
                 Text(
                     text = channel.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                
+                // Quality badge and category
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -87,7 +99,6 @@ fun ChannelCard(
                     if (channel.verifiedQuality != null) {
                         QualityBadge(quality = channel.verifiedQuality)
                     }
-                    // Show category if available
                     channel.categories.firstOrNull()?.let { category ->
                         Text(
                             text = category.replaceFirstChar { it.uppercase() },
@@ -96,6 +107,15 @@ fun ChannelCard(
                             maxLines = 1
                         )
                     }
+                }
+
+                // Now/Next EPG info
+                if (hasEpg) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    NowIndicatorCompact(
+                        currentProgram = currentProgram,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }

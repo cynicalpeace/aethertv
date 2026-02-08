@@ -1,5 +1,8 @@
 package com.aethertv.ui.setup
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
@@ -27,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,6 +49,10 @@ enum class SetupStep {
     COMPLETE
 }
 
+private val accentColor = Color(0xFF00B4D8)
+private val successColor = Color(0xFF2ECC71)
+private val errorColor = Color(0xFFE74C3C)
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun FirstRunScreen(
@@ -52,7 +60,22 @@ fun FirstRunScreen(
     viewModel: FirstRunViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val installIntent by viewModel.installIntent.collectAsState()
     val focusRequester = remember { FocusRequester() }
+    
+    // Launcher for install intent
+    val installLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.onInstallResult()
+    }
+    
+    // Launch install intent when available
+    LaunchedEffect(installIntent) {
+        installIntent?.let { intent ->
+            installLauncher.launch(intent)
+        }
+    }
     
     LaunchedEffect(Unit) {
         delay(500)
@@ -81,13 +104,25 @@ fun FirstRunScreen(
                     onGetStarted = { viewModel.startScanning() },
                     focusRequester = focusRequester
                 )
-                SetupStep.SCANNING -> ScanningStep(
-                    channelsFound = uiState.channelsFound,
-                    statusMessage = uiState.statusMessage,
-                    engineInstalled = uiState.engineInstalled,
-                    onInstallEngine = { viewModel.openEngineInstall() },
-                    onContinueWithDemo = { viewModel.startScanning() }
-                )
+                SetupStep.SCANNING -> {
+                    if (!uiState.engineInstalled) {
+                        EngineInstallStep(
+                            installState = uiState.installState,
+                            installProgress = uiState.installProgress,
+                            installError = uiState.installError,
+                            onInstallBundled = { viewModel.installBundledEngine() },
+                            onInstallFromStore = { viewModel.openEngineInstall() },
+                            onSkip = { viewModel.skipEngine() },
+                            onRetry = { viewModel.retryInstall() },
+                            focusRequester = focusRequester
+                        )
+                    } else {
+                        ScanningStep(
+                            channelsFound = uiState.channelsFound,
+                            statusMessage = uiState.statusMessage,
+                        )
+                    }
+                }
                 SetupStep.COMPLETE -> CompleteStep(
                     channelsFound = uiState.channelsFound,
                     engineInstalled = uiState.engineInstalled
@@ -119,7 +154,7 @@ private fun WelcomeStep(
         )
         
         Text(
-            text = "Stream live TV channels via AceStream P2P",
+            text = "Stream live TV channels via P2P",
             color = Color.Gray,
             fontSize = 18.sp,
             textAlign = TextAlign.Center
@@ -131,10 +166,10 @@ private fun WelcomeStep(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FeatureRow("🔍", "Auto-discover channels from AceStream")
-            FeatureRow("⭐", "Save your favorite channels")
-            FeatureRow("📡", "Switch channels with D-pad up/down")
-            FeatureRow("🔄", "In-app updates from GitHub")
+            FeatureRow("🔍", "Auto-discover channels")
+            FeatureRow("📺", "EPG with Now/Next info")
+            FeatureRow("⭐", "Save your favorites")
+            FeatureRow("🔄", "In-app updates")
         }
         
         Spacer(modifier = Modifier.height(32.dp))
@@ -144,12 +179,6 @@ private fun WelcomeStep(
             onClick = onGetStarted,
             focusRequester = focusRequester,
             primary = true
-        )
-        
-        Text(
-            text = "Requires AceStream Engine installed",
-            color = Color.Gray,
-            fontSize = 12.sp
         )
     }
 }
@@ -170,106 +199,213 @@ private fun FeatureRow(emoji: String, text: String) {
 }
 
 @Composable
-private fun ScanningStep(
-    channelsFound: Int,
-    statusMessage: String,
-    engineInstalled: Boolean = true,
-    onInstallEngine: () -> Unit = {},
-    onContinueWithDemo: () -> Unit = {}
+private fun EngineInstallStep(
+    installState: InstallState,
+    installProgress: Float,
+    installError: String?,
+    onInstallBundled: () -> Unit,
+    onInstallFromStore: () -> Unit,
+    onSkip: () -> Unit,
+    onRetry: () -> Unit,
+    focusRequester: FocusRequester
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        if (!engineInstalled) {
-            // Engine not installed - show installation options
-            Text(
-                text = "📦",
-                fontSize = 80.sp
-            )
-            
-            Text(
-                text = "Streaming Engine Required",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Text(
-                text = "AetherTV uses AceStream for P2P streaming.\nInstall it to access live channels.",
-                color = Color.Gray,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Can't use FocusableButton here due to scope, using Surface directly
+        Text(
+            text = when (installState) {
+                InstallState.EXTRACTING -> "📦"
+                InstallState.INSTALLING, InstallState.WAITING -> "⏳"
+                InstallState.SUCCESS -> "✅"
+                InstallState.FAILED -> "❌"
+                else -> "🔧"
+            },
+            fontSize = 80.sp
+        )
+        
+        Text(
+            text = when (installState) {
+                InstallState.EXTRACTING -> "Preparing Installation..."
+                InstallState.INSTALLING -> "Installing..."
+                InstallState.WAITING -> "Please confirm installation"
+                InstallState.SUCCESS -> "Installation Complete!"
+                InstallState.FAILED -> "Installation Failed"
+                else -> "Streaming Engine Required"
+            },
+            color = Color.White,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        
+        when (installState) {
+            InstallState.IDLE -> {
                 Text(
-                    text = "Install from Play Store →",
-                    color = Color(0xFF00B4D8),
+                    text = "AetherTV requires AceStream Engine for P2P streaming.\nInstall it now to access live channels.",
+                    color = Color.Gray,
                     fontSize = 16.sp,
-                    modifier = Modifier
-                        .background(Color(0xFF1A1A1A), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                    textAlign = TextAlign.Center
                 )
                 
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Progress indicator placeholder
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    FocusableButton(
+                        text = "📦 Install Now (Recommended)",
+                        onClick = onInstallBundled,
+                        focusRequester = focusRequester,
+                        primary = true
+                    )
+                    
+                    FocusableButton(
+                        text = "🏪 Get from Play Store",
+                        onClick = onInstallFromStore,
+                        focusRequester = remember { FocusRequester() },
+                        primary = false
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    FocusableButton(
+                        text = "Continue with demo channels →",
+                        onClick = onSkip,
+                        focusRequester = remember { FocusRequester() },
+                        primary = false
+                    )
+                }
+            }
+            
+            InstallState.EXTRACTING, InstallState.INSTALLING, InstallState.WAITING -> {
+                // Progress bar
+                Box(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .height(8.dp)
+                        .background(Color(0xFF333333), RoundedCornerShape(4.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(installProgress)
+                            .height(8.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(accentColor, successColor)
+                                ),
+                                RoundedCornerShape(4.dp)
+                            )
+                    )
+                }
+                
                 Text(
-                    text = "or continue with demo channels",
+                    text = when (installState) {
+                        InstallState.EXTRACTING -> "Extracting APK..."
+                        InstallState.INSTALLING -> "Starting installer..."
+                        InstallState.WAITING -> "Approve the installation when prompted"
+                        else -> ""
+                    },
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
             }
-        } else {
-            // Normal scanning state
-            Text(
-                text = "🔍",
-                fontSize = 80.sp
-            )
             
-            Text(
-                text = "Scanning for Channels",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Text(
-                text = statusMessage,
-                color = Color.Gray,
-                fontSize = 16.sp
-            )
-            
-            AnimatedVisibility(
-                visible = channelsFound > 0,
-                enter = fadeIn()
-            ) {
-                Text(
-                    text = "$channelsFound channels found",
-                    color = Color(0xFF00B4D8),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            InstallState.FAILED -> {
+                installError?.let { error ->
+                    Text(
+                        text = error,
+                        color = errorColor,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    FocusableButton(
+                        text = "🔄 Try Again",
+                        onClick = onRetry,
+                        focusRequester = focusRequester,
+                        primary = true
+                    )
+                    
+                    FocusableButton(
+                        text = "Continue without engine",
+                        onClick = onSkip,
+                        focusRequester = remember { FocusRequester() },
+                        primary = false
+                    )
+                }
             }
             
-            // Progress indicator
+            InstallState.SUCCESS -> {
+                Text(
+                    text = "Starting channel scan...",
+                    color = successColor,
+                    fontSize = 16.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScanningStep(
+    channelsFound: Int,
+    statusMessage: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Text(
+            text = "🔍",
+            fontSize = 80.sp
+        )
+        
+        Text(
+            text = "Scanning for Channels",
+            color = Color.White,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Text(
+            text = statusMessage,
+            color = Color.Gray,
+            fontSize = 16.sp
+        )
+        
+        AnimatedVisibility(
+            visible = channelsFound > 0,
+            enter = fadeIn()
+        ) {
+            Text(
+                text = "$channelsFound channels found",
+                color = accentColor,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        
+        // Progress indicator
+        Box(
+            modifier = Modifier
+                .width(200.dp)
+                .height(4.dp)
+                .background(Color(0xFF333333), RoundedCornerShape(2.dp))
+        ) {
             Box(
                 modifier = Modifier
-                    .width(200.dp)
+                    .fillMaxWidth(0.7f)
                     .height(4.dp)
-                    .background(Color(0xFF333333), RoundedCornerShape(2.dp))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(4.dp)
-                        .background(Color(0xFF00B4D8), RoundedCornerShape(2.dp))
-                )
-            }
+                    .background(accentColor, RoundedCornerShape(2.dp))
+            )
         }
     }
 }
@@ -301,13 +437,13 @@ private fun CompleteStep(
             } else {
                 "Using demo channels"
             },
-            color = Color(0xFF00B4D8),
+            color = accentColor,
             fontSize = 20.sp
         )
         
         if (!engineInstalled) {
             Text(
-                text = "Install AceStream from Settings to access live channels",
+                text = "Install AceStream from Settings for live channels",
                 color = Color.Gray,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
@@ -333,7 +469,7 @@ private fun FocusableButton(
     var isFocused by remember { mutableStateOf(false) }
     
     val baseColor = if (primary) Color(0xFF0077B6) else Color(0xFF2A2A2A)
-    val focusedColor = if (primary) Color(0xFF00B4D8) else Color(0xFF444444)
+    val focusedColor = if (primary) accentColor else Color(0xFF444444)
     
     Surface(
         onClick = onClick,

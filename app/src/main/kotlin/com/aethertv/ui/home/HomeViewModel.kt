@@ -8,8 +8,11 @@ import com.aethertv.data.local.WatchHistoryDao
 import com.aethertv.data.preferences.SettingsDataStore
 import com.aethertv.data.remote.AceStreamEngineClient
 import com.aethertv.domain.model.Channel
+import com.aethertv.domain.model.EpgProgram
 import com.aethertv.domain.usecase.GetChannelsUseCase
+import com.aethertv.domain.usecase.GetEpgUseCase
 import com.aethertv.data.repository.ChannelRepository
+import com.aethertv.epg.EpgMatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +23,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.seconds
 
+data class ChannelWithEpg(
+    val channel: Channel,
+    val currentProgram: EpgProgram? = null,
+    val nextProgram: EpgProgram? = null,
+)
+
 data class CategoryRow(
     val categoryName: String,
-    val channels: List<Channel>,
+    val channels: List<ChannelWithEpg>,
 )
 
 data class HomeUiState(
@@ -42,6 +51,8 @@ class HomeViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore,
     private val aceStreamClient: AceStreamEngineClient,
     private val watchHistoryDao: WatchHistoryDao,
+    private val getEpgUseCase: GetEpgUseCase,
+    private val epgMatcher: EpgMatcher,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -53,22 +64,60 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Observe channels (FirstRunScreen handles initial data loading)
+            // Observe channels with EPG data
             combine(
                 getChannelsUseCase.all(),
                 getChannelsUseCase.categories(),
                 watchHistoryDao.observeRecent(10),
-            ) { allChannels, categories, recentHistory ->
+                getEpgUseCase.observeAllEpgChannels(),
+                getEpgUseCase.observeProgramsInRange(
+                    System.currentTimeMillis() - 3600_000,
+                    System.currentTimeMillis() + 7200_000,
+                ),
+            ) { values ->
+                @Suppress("UNCHECKED_CAST")
+                val allChannels = values[0] as List<Channel>
+                @Suppress("UNCHECKED_CAST")
+                val categories = values[1] as List<String>
+                @Suppress("UNCHECKED_CAST")
+                val recentHistory = values[2] as List<com.aethertv.data.local.entity.WatchHistoryEntity>
+                @Suppress("UNCHECKED_CAST")
+                val epgChannels = values[3] as List<com.aethertv.data.local.entity.EpgChannelEntity>
+                @Suppress("UNCHECKED_CAST")
+                val allPrograms = values[4] as List<EpgProgram>
+                
+                val now = System.currentTimeMillis()
                 val channelMap = allChannels.associateBy { it.infohash }
+                
+                // Group programs by EPG channel ID
+                val programsByEpgChannel = allPrograms.groupBy { it.channelId }
+                
+                // Build EPG match cache
+                val epgMatchCache = mutableMapOf<String, String?>() // channel name -> epg channel id
+                
+                fun withEpg(channel: Channel): ChannelWithEpg {
+                    // Find matching EPG channel
+                    val epgChannelId = channel.epgChannelId ?: epgMatchCache.getOrPut(channel.name) {
+                        epgMatcher.findBestMatchByName(channel.name, epgChannels)?.xmltvId
+                    }
+                    
+                    if (epgChannelId != null) {
+                        val programs = programsByEpgChannel[epgChannelId] ?: emptyList()
+                        val current = programs.find { now in it.startTime until it.endTime }
+                        val next = programs.filter { it.startTime > now }.minByOrNull { it.startTime }
+                        return ChannelWithEpg(channel, current, next)
+                    }
+                    return ChannelWithEpg(channel)
+                }
                 
                 // Get recently watched channels (deduplicated, in order)
                 val recentInfohashes = recentHistory
                     .map { it.infohash }
                     .distinct()
                     .take(10)
-                val recentChannels = recentInfohashes.mapNotNull { channelMap[it] }
+                val recentChannels = recentInfohashes.mapNotNull { channelMap[it]?.let { ch -> withEpg(ch) } }
                 
-                val favorites = allChannels.filter { it.isFavorite }
+                val favorites = allChannels.filter { it.isFavorite }.map { withEpg(it) }
                 val rows = mutableListOf<CategoryRow>()
                 
                 // Add recently watched first
@@ -83,7 +132,9 @@ class HomeViewModel @Inject constructor(
                 
                 // Then categories
                 for (category in categories) {
-                    val channelsInCategory = allChannels.filter { category in it.categories }
+                    val channelsInCategory = allChannels
+                        .filter { category in it.categories }
+                        .map { withEpg(it) }
                     if (channelsInCategory.isNotEmpty()) {
                         rows.add(CategoryRow(category.replaceFirstChar { it.uppercase() }, channelsInCategory))
                     }
@@ -91,7 +142,7 @@ class HomeViewModel @Inject constructor(
                 
                 val status = when {
                     rows.isEmpty() -> EngineStatus.NOT_FOUND
-                    rows.any { it.channels.any { ch -> ch.categories.contains("mock") } } -> EngineStatus.MOCK_DATA
+                    rows.any { it.channels.any { ch -> ch.channel.categories.contains("mock") } } -> EngineStatus.MOCK_DATA
                     else -> EngineStatus.CONNECTED
                 }
                 HomeUiState(

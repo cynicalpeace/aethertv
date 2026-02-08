@@ -13,7 +13,7 @@
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
 | Phase 1: MVP App | ✅ Complete | 100% |
-| Phase 2: Verification + Polish | 🔄 In Progress | 70% |
+| Phase 2: Verification + Polish | 🔄 In Progress | 85% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
 ---
@@ -34,6 +34,7 @@
 | v1.1.0-debug | 2026-02-08 | Phase 2: Stream verification with quality detection |
 | v1.2.0-debug | 2026-02-08 | **Engine abstraction layer** — swappable P2P backends |
 | v1.3.0-debug | 2026-02-08 | Voice search, engine management in Settings |
+| **v1.4.0-debug** | 2026-02-08 | **EPG TV Guide + Bundled AceStream APK** (95MB) |
 
 ---
 
@@ -84,29 +85,29 @@
 - [x] **1.16** Clear watch history in Settings
 
 ### Week 4: EPG
-- [ ] **1.13** XMLTV streaming SAX parser
-- [ ] **1.14** EPG Room storage
-- [ ] **1.15** EpgMatcher (fuzzy channel matching)
-- [ ] **1.16** TV Guide grid screen
+- [x] **1.13** XMLTV streaming SAX parser ✅ v1.4.0
+- [x] **1.14** EPG Room storage ✅ v1.4.0
+- [x] **1.15** EpgMatcher (fuzzy channel matching) ✅ v1.4.0
+- [x] **1.16** TV Guide grid screen ✅ v1.4.0
 
 ---
 
 ## Phase 2: Verification + Polish (Target: 4 weeks)
 
 ### Week 5: Stream Verification
-- [ ] **2.1** StreamVerifier with quality detection
-- [ ] **2.2** VerificationScheduler with rate limiting
-- [ ] **2.3** UI indicators (green/amber/red dots, quality badges)
+- [x] **2.1** StreamVerifier with quality detection ✅ v1.1.0
+- [x] **2.2** VerificationScheduler with rate limiting ✅ v1.1.0
+- [x] **2.3** UI indicators (green/amber/red dots, quality badges) ✅ v1.1.0
 
 ### Week 6: Search + Settings
-- [ ] **2.4** Voice search integration
+- [x] **2.4** Voice search integration ✅ v1.3.0
 - [ ] **2.5** Verification settings UI
 - [ ] **2.6** Filter rules settings UI
 
 ### Week 7: History + Matching
-- [ ] **2.7** Watch history
+- [x] **2.7** Watch history ✅ v1.0.0
 - [ ] **2.8** Manual EPG channel matching UI
-- [ ] **2.9** Mini channel list overlay
+- [x] **2.9** Now/Next on channel cards ✅ v1.4.0
 
 ### Week 8: Performance
 - [ ] **2.10** Memory profiling on device

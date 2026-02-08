@@ -154,11 +154,13 @@ fun HomeScreen(
                             contentPadding = PaddingValues(horizontal = 48.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            items(row.channels, key = { it.infohash }) { channel ->
+                            items(row.channels, key = { it.channel.infohash }) { channelWithEpg ->
                                 ChannelCard(
-                                    channel = channel,
-                                    onClick = { onNavigateToPlayer(channel.infohash) },
-                                    onLongClick = { viewModel.toggleFavorite(channel.infohash) },
+                                    channel = channelWithEpg.channel,
+                                    onClick = { onNavigateToPlayer(channelWithEpg.channel.infohash) },
+                                    onLongClick = { viewModel.toggleFavorite(channelWithEpg.channel.infohash) },
+                                    currentProgram = channelWithEpg.currentProgram,
+                                    nextProgram = channelWithEpg.nextProgram,
                                 )
                             }
                         }
