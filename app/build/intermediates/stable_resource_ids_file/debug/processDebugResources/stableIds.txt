@@ -1,4 +1,4 @@
-com.aethertv.app:xml/network_security_config = 0x7f120000
+com.aethertv.app:xml/network_security_config = 0x7f120001
 com.aethertv.app:styleable/StateListDrawable = 0x7f11001f
 com.aethertv.app:styleable/SplitPlaceholderRule = 0x7f11001e
 com.aethertv.app:styleable/SplitPairFilter = 0x7f11001c
@@ -829,6 +829,7 @@ com.aethertv.app:attr/graph = 0x7f040034
 com.aethertv.app:color/notification_action_color_filter = 0x7f06000b
 com.aethertv.app:attr/fontProviderCerts = 0x7f040028
 com.aethertv.app:string/m3c_date_input_headline_description = 0x7f0f005e
+com.aethertv.app:xml/file_paths = 0x7f120000
 com.aethertv.app:string/error_message_setup_required = 0x7f0f0020
 com.aethertv.app:layout/ime_base_split_test_activity = 0x7f0c000b
 com.aethertv.app:string/m3c_wide_navigation_rail_close_rail = 0x7f0f0098

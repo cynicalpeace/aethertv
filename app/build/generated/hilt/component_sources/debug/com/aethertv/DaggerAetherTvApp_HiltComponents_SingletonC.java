@@ -23,8 +23,10 @@ import com.aethertv.data.preferences.SettingsDataStore;
 import com.aethertv.data.remote.AceStreamEngineClient;
 import com.aethertv.data.repository.ChannelRepositoryImpl;
 import com.aethertv.data.repository.EpgRepositoryImpl;
+import com.aethertv.data.repository.UpdateRepository;
 import com.aethertv.di.AppModule_ProvidePreferencesDataStoreFactory;
 import com.aethertv.di.AppModule_ProvideSettingsDataStoreFactory;
+import com.aethertv.di.AppModule_ProvideUpdateRepositoryFactory;
 import com.aethertv.di.DatabaseModule_ProvideChannelDaoFactory;
 import com.aethertv.di.DatabaseModule_ProvideDatabaseFactory;
 import com.aethertv.di.DatabaseModule_ProvideEpgDaoFactory;
@@ -538,7 +540,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
           return (T) new SearchViewModel(viewModelCImpl.searchChannelsUseCase());
 
           case 4: // com.aethertv.ui.settings.SettingsViewModel 
-          return (T) new SettingsViewModel(singletonCImpl.provideSettingsDataStoreProvider.get());
+          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get());
 
           default: throw new AssertionError(id);
         }
@@ -644,6 +646,8 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     private Provider<ExoPlayer> provideExoPlayerProvider;
 
+    private Provider<UpdateRepository> provideUpdateRepositoryProvider;
+
     private SingletonCImpl(ApplicationContextModule applicationContextModuleParam) {
       this.applicationContextModule = applicationContextModuleParam;
       initialize(applicationContextModuleParam);
@@ -689,6 +693,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
       this.channelRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChannelRepositoryImpl>(singletonCImpl, 10));
       this.scraperWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<ScraperWorker_AssistedFactory>(singletonCImpl, 8));
       this.provideExoPlayerProvider = DoubleCheck.provider(new SwitchingProvider<ExoPlayer>(singletonCImpl, 11));
+      this.provideUpdateRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<UpdateRepository>(singletonCImpl, 12));
     }
 
     @Override
@@ -775,6 +780,9 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
           case 11: // androidx.media3.exoplayer.ExoPlayer 
           return (T) PlayerModule_ProvideExoPlayerFactory.provideExoPlayer(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 12: // com.aethertv.data.repository.UpdateRepository 
+          return (T) AppModule_ProvideUpdateRepositoryFactory.provideUpdateRepository(singletonCImpl.provideHttpClientProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           default: throw new AssertionError(id);
         }

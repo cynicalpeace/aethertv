@@ -1,6 +1,6 @@
 package com.aethertv.ui.settings;
 
-import com.aethertv.data.preferences.SettingsDataStore;
+import com.aethertv.data.repository.UpdateRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.Provider;
@@ -26,28 +26,28 @@ import javax.annotation.processing.Generated;
     "nullness:initialization.field.uninitialized"
 })
 public final class SettingsViewModel_Factory implements Factory<SettingsViewModel> {
-  private final Provider<SettingsDataStore> settingsDataStoreProvider;
+  private final Provider<UpdateRepository> updateRepositoryProvider;
 
-  public SettingsViewModel_Factory(Provider<SettingsDataStore> settingsDataStoreProvider) {
-    this.settingsDataStoreProvider = settingsDataStoreProvider;
+  public SettingsViewModel_Factory(Provider<UpdateRepository> updateRepositoryProvider) {
+    this.updateRepositoryProvider = updateRepositoryProvider;
   }
 
   @Override
   public SettingsViewModel get() {
-    return newInstance(settingsDataStoreProvider.get());
+    return newInstance(updateRepositoryProvider.get());
   }
 
   public static SettingsViewModel_Factory create(
-      javax.inject.Provider<SettingsDataStore> settingsDataStoreProvider) {
-    return new SettingsViewModel_Factory(Providers.asDaggerProvider(settingsDataStoreProvider));
+      javax.inject.Provider<UpdateRepository> updateRepositoryProvider) {
+    return new SettingsViewModel_Factory(Providers.asDaggerProvider(updateRepositoryProvider));
   }
 
   public static SettingsViewModel_Factory create(
-      Provider<SettingsDataStore> settingsDataStoreProvider) {
-    return new SettingsViewModel_Factory(settingsDataStoreProvider);
+      Provider<UpdateRepository> updateRepositoryProvider) {
+    return new SettingsViewModel_Factory(updateRepositoryProvider);
   }
 
-  public static SettingsViewModel newInstance(SettingsDataStore settingsDataStore) {
-    return new SettingsViewModel(settingsDataStore);
+  public static SettingsViewModel newInstance(UpdateRepository updateRepository) {
+    return new SettingsViewModel(updateRepository);
   }
 }

@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.aethertv.data.preferences.SettingsDataStore
+import com.aethertv.data.repository.UpdateRepository
+import io.ktor.client.HttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -62,4 +64,11 @@ object AppModule {
     fun provideSettingsDataStore(
         dataStore: DataStore<Preferences>,
     ): SettingsDataStore = SettingsDataStore(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideUpdateRepository(
+        httpClient: HttpClient,
+        @ApplicationContext context: Context,
+    ): UpdateRepository = UpdateRepository(httpClient, context)
 }

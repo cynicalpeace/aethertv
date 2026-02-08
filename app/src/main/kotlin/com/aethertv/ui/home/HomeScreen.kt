@@ -16,13 +16,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.aethertv.ui.components.ChannelCard
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToPlayer: (String) -> Unit,
@@ -46,6 +58,12 @@ fun HomeScreen(
                 text = "AetherTV",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
+            )
+            
+            // Settings button
+            TopBarButton(
+                text = "⚙ Settings",
+                onClick = onNavigateToSettings
             )
         }
 
@@ -118,5 +136,35 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TopBarButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable(),
+        shape = ClickableSurfaceDefaults.shape(
+            shape = RoundedCornerShape(8.dp)
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isFocused) Color(0xFF00B4D8) else Color(0xFF1A1A1A),
+            focusedContainerColor = Color(0xFF00B4D8)
+        )
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }
