@@ -13,7 +13,7 @@
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
 | Phase 1: MVP App | ✅ Complete | 100% |
-| Phase 2: Verification + Polish | 🔄 In Progress | 85% |
+| Phase 2: Verification + Polish | 🔄 In Progress | 90% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
 ---
@@ -35,6 +35,7 @@
 | v1.2.0-debug | 2026-02-08 | **Engine abstraction layer** — swappable P2P backends |
 | v1.3.0-debug | 2026-02-08 | Voice search, engine management in Settings |
 | **v1.4.0-debug** | 2026-02-08 | **EPG TV Guide + Bundled AceStream APK** (95MB) |
+| v1.5.0-debug | 2026-02-08 | EPG settings UI + Guide button |
 
 ---
 
