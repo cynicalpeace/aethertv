@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aethertv.data.MockDataProvider
+import com.aethertv.data.local.WatchHistoryDao
 import com.aethertv.data.preferences.SettingsDataStore
 import com.aethertv.data.remote.AceStreamEngineClient
 import com.aethertv.domain.model.Channel
@@ -40,6 +41,7 @@ class HomeViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val settingsDataStore: SettingsDataStore,
     private val aceStreamClient: AceStreamEngineClient,
+    private val watchHistoryDao: WatchHistoryDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -51,33 +53,42 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Check if first run
-            val isFirstRun = settingsDataStore.isFirstRun.first()
-            if (isFirstRun) {
-                // Try AceStream first, fall back to mock data
-                val connected = tryFetchFromAceStream()
-                if (!connected) {
-                    loadMockData()
-                }
-                settingsDataStore.setFirstRunComplete()
-            }
-            
-            // Observe channels
+            // Observe channels (FirstRunScreen handles initial data loading)
             combine(
                 getChannelsUseCase.all(),
                 getChannelsUseCase.categories(),
-            ) { allChannels, categories ->
+                watchHistoryDao.observeRecent(10),
+            ) { allChannels, categories, recentHistory ->
+                val channelMap = allChannels.associateBy { it.infohash }
+                
+                // Get recently watched channels (deduplicated, in order)
+                val recentInfohashes = recentHistory
+                    .map { it.infohash }
+                    .distinct()
+                    .take(10)
+                val recentChannels = recentInfohashes.mapNotNull { channelMap[it] }
+                
                 val favorites = allChannels.filter { it.isFavorite }
                 val rows = mutableListOf<CategoryRow>()
+                
+                // Add recently watched first
+                if (recentChannels.isNotEmpty()) {
+                    rows.add(CategoryRow("Recently Watched", recentChannels))
+                }
+                
+                // Then favorites
                 if (favorites.isNotEmpty()) {
                     rows.add(CategoryRow("Favorites", favorites))
                 }
+                
+                // Then categories
                 for (category in categories) {
                     val channelsInCategory = allChannels.filter { category in it.categories }
                     if (channelsInCategory.isNotEmpty()) {
                         rows.add(CategoryRow(category.replaceFirstChar { it.uppercase() }, channelsInCategory))
                     }
                 }
+                
                 val status = when {
                     rows.isEmpty() -> EngineStatus.NOT_FOUND
                     rows.any { it.channels.any { ch -> ch.categories.contains("mock") } } -> EngineStatus.MOCK_DATA

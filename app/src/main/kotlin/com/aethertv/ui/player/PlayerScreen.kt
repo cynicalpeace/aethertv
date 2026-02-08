@@ -152,6 +152,29 @@ fun PlayerScreen(
             }
         }
         
+        // Buffering indicator (shows during playback when buffering)
+        if (uiState.isBuffering && !uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    .padding(16.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "⏳",
+                        fontSize = 32.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Buffering ${uiState.bufferPercent}%",
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+        
         // Error overlay
         uiState.error?.let { error ->
             Box(

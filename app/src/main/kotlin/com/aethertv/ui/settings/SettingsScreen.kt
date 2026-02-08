@@ -97,6 +97,28 @@ fun SettingsScreen(
                 SettingsRow(label = "Hardware Decoding", value = "Auto")
             }
             
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Data section
+            SettingsSection(title = "Data") {
+                val dataMessage by viewModel.dataMessage.collectAsState()
+                
+                dataMessage?.let { message ->
+                    Text(
+                        text = "✓ $message",
+                        color = Color(0xFF4CAF50),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                
+                FocusableButton(
+                    text = "Clear Watch History",
+                    onClick = { viewModel.clearWatchHistory() },
+                    focusRequester = null
+                )
+            }
+            
             Spacer(modifier = Modifier.height(48.dp))
             
             // Footer hint

@@ -19,6 +19,7 @@ import com.aethertv.data.local.AetherTvDatabase;
 import com.aethertv.data.local.ChannelDao;
 import com.aethertv.data.local.EpgDao;
 import com.aethertv.data.local.FavoriteDao;
+import com.aethertv.data.local.WatchHistoryDao;
 import com.aethertv.data.preferences.SettingsDataStore;
 import com.aethertv.data.remote.AceStreamEngineClient;
 import com.aethertv.data.repository.ChannelRepositoryImpl;
@@ -31,6 +32,7 @@ import com.aethertv.di.DatabaseModule_ProvideChannelDaoFactory;
 import com.aethertv.di.DatabaseModule_ProvideDatabaseFactory;
 import com.aethertv.di.DatabaseModule_ProvideEpgDaoFactory;
 import com.aethertv.di.DatabaseModule_ProvideFavoriteDaoFactory;
+import com.aethertv.di.DatabaseModule_ProvideWatchHistoryDaoFactory;
 import com.aethertv.di.NetworkModule_ProvideAceStreamEngineClientFactory;
 import com.aethertv.di.NetworkModule_ProvideHttpClientFactory;
 import com.aethertv.di.NetworkModule_ProvideJsonFactory;
@@ -45,6 +47,7 @@ import com.aethertv.epg.XmltvParser;
 import com.aethertv.scraper.ScraperWorker;
 import com.aethertv.scraper.ScraperWorker_AssistedFactory;
 import com.aethertv.ui.MainActivity;
+import com.aethertv.ui.MainActivity_MembersInjector;
 import com.aethertv.ui.guide.GuideViewModel;
 import com.aethertv.ui.guide.GuideViewModel_HiltModules;
 import com.aethertv.ui.guide.GuideViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
@@ -65,6 +68,10 @@ import com.aethertv.ui.settings.SettingsViewModel;
 import com.aethertv.ui.settings.SettingsViewModel_HiltModules;
 import com.aethertv.ui.settings.SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.aethertv.ui.settings.SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.aethertv.ui.setup.FirstRunViewModel;
+import com.aethertv.ui.setup.FirstRunViewModel_HiltModules;
+import com.aethertv.ui.setup.FirstRunViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.aethertv.ui.setup.FirstRunViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import dagger.hilt.android.ActivityRetainedLifecycle;
@@ -419,6 +426,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     @Override
     public void injectMainActivity(MainActivity mainActivity) {
+      injectMainActivity2(mainActivity);
     }
 
     @Override
@@ -428,7 +436,7 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     @Override
     public Map<Class<?>, Boolean> getViewModelKeys() {
-      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>of(GuideViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GuideViewModel_HiltModules.KeyModule.provide(), HomeViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, HomeViewModel_HiltModules.KeyModule.provide(), PlayerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, PlayerViewModel_HiltModules.KeyModule.provide(), SearchViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SearchViewModel_HiltModules.KeyModule.provide(), SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SettingsViewModel_HiltModules.KeyModule.provide()));
+      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>builderWithExpectedSize(6).put(FirstRunViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, FirstRunViewModel_HiltModules.KeyModule.provide()).put(GuideViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GuideViewModel_HiltModules.KeyModule.provide()).put(HomeViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, HomeViewModel_HiltModules.KeyModule.provide()).put(PlayerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, PlayerViewModel_HiltModules.KeyModule.provide()).put(SearchViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SearchViewModel_HiltModules.KeyModule.provide()).put(SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SettingsViewModel_HiltModules.KeyModule.provide()).build());
     }
 
     @Override
@@ -445,6 +453,11 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
     public ViewComponentBuilder viewComponentBuilder() {
       return new ViewCBuilder(singletonCImpl, activityRetainedCImpl, activityCImpl);
     }
+
+    private MainActivity injectMainActivity2(MainActivity instance) {
+      MainActivity_MembersInjector.injectSettingsDataStore(instance, singletonCImpl.provideSettingsDataStoreProvider.get());
+      return instance;
+    }
   }
 
   private static final class ViewModelCImpl extends AetherTvApp_HiltComponents.ViewModelC {
@@ -453,6 +466,8 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
     private final ActivityRetainedCImpl activityRetainedCImpl;
 
     private final ViewModelCImpl viewModelCImpl = this;
+
+    private Provider<FirstRunViewModel> firstRunViewModelProvider;
 
     private Provider<GuideViewModel> guideViewModelProvider;
 
@@ -489,16 +504,17 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
     @SuppressWarnings("unchecked")
     private void initialize(final SavedStateHandle savedStateHandleParam,
         final ViewModelLifecycle viewModelLifecycleParam) {
-      this.guideViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
-      this.homeViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
-      this.playerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
-      this.searchViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 3);
-      this.settingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 4);
+      this.firstRunViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
+      this.guideViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
+      this.homeViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
+      this.playerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 3);
+      this.searchViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 4);
+      this.settingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 5);
     }
 
     @Override
     public Map<Class<?>, javax.inject.Provider<ViewModel>> getHiltViewModelMap() {
-      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>of(GuideViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) guideViewModelProvider), HomeViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) homeViewModelProvider), PlayerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) playerViewModelProvider), SearchViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) searchViewModelProvider), SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) settingsViewModelProvider)));
+      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>builderWithExpectedSize(6).put(FirstRunViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) firstRunViewModelProvider)).put(GuideViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) guideViewModelProvider)).put(HomeViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) homeViewModelProvider)).put(PlayerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) playerViewModelProvider)).put(SearchViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) searchViewModelProvider)).put(SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) settingsViewModelProvider)).build());
     }
 
     @Override
@@ -527,20 +543,23 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
       @Override
       public T get() {
         switch (id) {
-          case 0: // com.aethertv.ui.guide.GuideViewModel 
+          case 0: // com.aethertv.ui.setup.FirstRunViewModel 
+          return (T) new FirstRunViewModel(singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get());
+
+          case 1: // com.aethertv.ui.guide.GuideViewModel 
           return (T) new GuideViewModel(viewModelCImpl.getEpgUseCase());
 
-          case 1: // com.aethertv.ui.home.HomeViewModel 
-          return (T) new HomeViewModel(viewModelCImpl.getChannelsUseCase(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get());
+          case 2: // com.aethertv.ui.home.HomeViewModel 
+          return (T) new HomeViewModel(viewModelCImpl.getChannelsUseCase(), singletonCImpl.channelRepositoryImplProvider.get(), singletonCImpl.provideSettingsDataStoreProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.watchHistoryDao());
 
-          case 2: // com.aethertv.ui.player.PlayerViewModel 
-          return (T) new PlayerViewModel(singletonCImpl.provideExoPlayerProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), viewModelCImpl.getChannelsUseCase());
+          case 3: // com.aethertv.ui.player.PlayerViewModel 
+          return (T) new PlayerViewModel(singletonCImpl.provideExoPlayerProvider.get(), singletonCImpl.provideAceStreamEngineClientProvider.get(), singletonCImpl.channelRepositoryImplProvider.get(), viewModelCImpl.getChannelsUseCase(), singletonCImpl.watchHistoryDao());
 
-          case 3: // com.aethertv.ui.search.SearchViewModel 
+          case 4: // com.aethertv.ui.search.SearchViewModel 
           return (T) new SearchViewModel(viewModelCImpl.searchChannelsUseCase());
 
-          case 4: // com.aethertv.ui.settings.SettingsViewModel 
-          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get());
+          case 5: // com.aethertv.ui.settings.SettingsViewModel 
+          return (T) new SettingsViewModel(singletonCImpl.provideUpdateRepositoryProvider.get(), singletonCImpl.watchHistoryDao());
 
           default: throw new AssertionError(id);
         }
@@ -677,6 +696,10 @@ public final class DaggerAetherTvApp_HiltComponents_SingletonC {
 
     private HiltWorkerFactory hiltWorkerFactory() {
       return WorkerFactoryModule_ProvideFactoryFactory.provideFactory(mapOfStringAndProviderOfWorkerAssistedFactoryOf());
+    }
+
+    private WatchHistoryDao watchHistoryDao() {
+      return DatabaseModule_ProvideWatchHistoryDaoFactory.provideWatchHistoryDao(provideDatabaseProvider.get());
     }
 
     @SuppressWarnings("unchecked")

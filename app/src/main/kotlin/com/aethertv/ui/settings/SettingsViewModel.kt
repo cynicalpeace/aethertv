@@ -2,6 +2,7 @@ package com.aethertv.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aethertv.data.local.WatchHistoryDao
 import com.aethertv.data.repository.GitHubRelease
 import com.aethertv.data.repository.UpdateRepository
 import com.aethertv.data.repository.UpdateState
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val updateRepository: UpdateRepository
+    private val updateRepository: UpdateRepository,
+    private val watchHistoryDao: WatchHistoryDao,
 ) : ViewModel() {
     
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -24,11 +26,25 @@ class SettingsViewModel @Inject constructor(
     private val _currentVersion = MutableStateFlow("Loading...")
     val currentVersion: StateFlow<String> = _currentVersion.asStateFlow()
     
+    private val _dataMessage = MutableStateFlow<String?>(null)
+    val dataMessage: StateFlow<String?> = _dataMessage.asStateFlow()
+    
     private var pendingRelease: GitHubRelease? = null
     private var pendingApkFile: File? = null
     
     init {
         _currentVersion.value = updateRepository.getCurrentVersion()
+    }
+    
+    fun clearWatchHistory() {
+        viewModelScope.launch {
+            watchHistoryDao.deleteAll()
+            _dataMessage.value = "Watch history cleared"
+        }
+    }
+    
+    fun dismissDataMessage() {
+        _dataMessage.value = null
     }
     
     fun checkForUpdate() {

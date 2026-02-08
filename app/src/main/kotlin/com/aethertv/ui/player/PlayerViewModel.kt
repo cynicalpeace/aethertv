@@ -3,7 +3,10 @@ package com.aethertv.ui.player
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.aethertv.data.local.WatchHistoryDao
+import com.aethertv.data.local.entity.WatchHistoryEntity
 import com.aethertv.data.remote.AceStreamEngineClient
 import com.aethertv.data.repository.ChannelRepository
 import com.aethertv.domain.model.Channel
@@ -19,9 +22,11 @@ import javax.inject.Inject
 data class PlayerUiState(
     val channel: Channel? = null,
     val isLoading: Boolean = true,
+    val isBuffering: Boolean = false,
     val error: String? = null,
     val channelList: List<Channel> = emptyList(),
     val currentIndex: Int = -1,
+    val bufferPercent: Int = 0,
 )
 
 @HiltViewModel
@@ -30,6 +35,7 @@ class PlayerViewModel @Inject constructor(
     private val engineClient: AceStreamEngineClient,
     private val channelRepository: ChannelRepository,
     private val getChannelsUseCase: GetChannelsUseCase,
+    private val watchHistoryDao: WatchHistoryDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -37,6 +43,26 @@ class PlayerViewModel @Inject constructor(
     
     companion object {
         private const val TAG = "PlayerViewModel"
+    }
+    
+    private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            val isBuffering = playbackState == Player.STATE_BUFFERING
+            _uiState.value = _uiState.value.copy(
+                isBuffering = isBuffering,
+                bufferPercent = exoPlayer.bufferedPercentage
+            )
+        }
+        
+        override fun onIsLoadingChanged(isLoading: Boolean) {
+            _uiState.value = _uiState.value.copy(
+                bufferPercent = exoPlayer.bufferedPercentage
+            )
+        }
+    }
+    
+    init {
+        exoPlayer.addListener(playerListener)
     }
 
     fun loadChannel(infohash: String) {
@@ -74,6 +100,15 @@ class PlayerViewModel @Inject constructor(
             exoPlayer.prepare()
             exoPlayer.play()
             _uiState.value = _uiState.value.copy(isLoading = false, error = null)
+            
+            // Record to watch history
+            watchHistoryDao.insert(
+                WatchHistoryEntity(
+                    infohash = infohash,
+                    watchedAt = System.currentTimeMillis(),
+                    durationSeconds = 0 // We don't track duration yet
+                )
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start stream", e)
             _uiState.value = _uiState.value.copy(
@@ -142,6 +177,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        exoPlayer.removeListener(playerListener)
         releasePlayer()
     }
 }

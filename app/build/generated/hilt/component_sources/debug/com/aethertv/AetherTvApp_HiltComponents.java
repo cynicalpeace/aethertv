@@ -14,6 +14,7 @@ import com.aethertv.ui.home.HomeViewModel_HiltModules;
 import com.aethertv.ui.player.PlayerViewModel_HiltModules;
 import com.aethertv.ui.search.SearchViewModel_HiltModules;
 import com.aethertv.ui.settings.SettingsViewModel_HiltModules;
+import com.aethertv.ui.setup.FirstRunViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
 import dagger.Module;
@@ -174,6 +175,7 @@ public final class AetherTvApp_HiltComponents {
       modules = {
           ActivityCBuilderModule.class,
           ViewModelCBuilderModule.class,
+          FirstRunViewModel_HiltModules.KeyModule.class,
           GuideViewModel_HiltModules.KeyModule.class,
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_SavedStateHandleModule.class,
@@ -216,6 +218,7 @@ public final class AetherTvApp_HiltComponents {
 
   @Subcomponent(
       modules = {
+          FirstRunViewModel_HiltModules.BindsModule.class,
           GuideViewModel_HiltModules.BindsModule.class,
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
           HomeViewModel_HiltModules.BindsModule.class,
