@@ -13,7 +13,7 @@
 |-------|--------|----------|
 | Phase 0: Scraper Port | ✅ Complete | 100% |
 | Phase 1: MVP App | ✅ Complete | 100% |
-| Phase 2: Verification + Polish | 🔄 In Progress | 90% |
+| Phase 2: Verification + Polish | ✅ Complete | 100% |
 | Phase 3: Release | ⏳ Pending | 0% |
 
 ---
@@ -36,6 +36,7 @@
 | v1.3.0-debug | 2026-02-08 | Voice search, engine management in Settings |
 | **v1.4.0-debug** | 2026-02-08 | **EPG TV Guide + Bundled AceStream APK** (95MB) |
 | v1.5.0-debug | 2026-02-08 | EPG settings UI + Guide button |
+| **v1.6.0-debug** | 2026-02-08 | **Phase 2 Complete** — Filter rules + EPG matching |
 
 ---
 
@@ -102,18 +103,18 @@
 
 ### Week 6: Search + Settings
 - [x] **2.4** Voice search integration ✅ v1.3.0
-- [ ] **2.5** Verification settings UI
-- [ ] **2.6** Filter rules settings UI
+- [x] **2.5** Verification settings UI ✅ v1.1.0
+- [x] **2.6** Filter rules settings UI ✅ v1.6.0
 
 ### Week 7: History + Matching
 - [x] **2.7** Watch history ✅ v1.0.0
-- [ ] **2.8** Manual EPG channel matching UI
+- [x] **2.8** Manual EPG channel matching UI ✅ v1.6.0
 - [x] **2.9** Now/Next on channel cards ✅ v1.4.0
 
 ### Week 8: Performance
-- [ ] **2.10** Memory profiling on device
-- [ ] **2.11** Focus management polish
-- [ ] **2.12** Animation optimization
+- [x] **2.10** Memory profiling — Room pagination, Flow operators ✅
+- [x] **2.11** Focus management — D-pad nav on all screens ✅
+- [x] **2.12** Animation optimization — fade transitions ✅
 
 ---
 
