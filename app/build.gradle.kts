@@ -16,8 +16,8 @@ android {
         applicationId = "com.aethertv.app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 16
-        versionName = "1.6.0"
+        versionCode = 20
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -55,7 +55,7 @@ android {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = variant.versionName
             val buildType = variant.buildType.name
-            output.outputFileName = "aethertv-${versionName}-${buildType}.apk"
+            output.outputFileName = "aethertv-v${versionName}-${buildType}.apk"
         }
     }
 }
@@ -81,6 +81,7 @@ dependencies {
     // Lifecycle
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.process)
 
     // Hilt
     implementation(libs.hilt.android)

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d8fa1f30d4ea035570d4be1805af37be",
+    "identityHash": "c2bb114cc6663af33489c5124a6101e0",
     "entities": [
       {
         "tableName": "channels",
@@ -92,7 +92,18 @@
           "columnNames": [
             "infohash"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_channels_epgChannelId",
+            "unique": false,
+            "columnNames": [
+              "epgChannelId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channels_epgChannelId` ON `${TABLE_NAME}` (`epgChannelId`)"
+          }
+        ]
       },
       {
         "tableName": "favorites",
@@ -338,7 +349,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd8fa1f30d4ea035570d4be1805af37be')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c2bb114cc6663af33489c5124a6101e0')"
     ]
   }
 }

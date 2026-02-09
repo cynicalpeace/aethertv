@@ -26,7 +26,13 @@ object DatabaseModule {
             context,
             AetherTvDatabase::class.java,
             "aethertv.db",
-        ).build()
+        )
+            // For v1 -> v2 migrations, add migration objects here:
+            // .addMigrations(MIGRATION_1_2)
+            // For now, fallback to destructive migration to prevent crashes
+            // on schema changes during development
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides
