@@ -2,6 +2,13 @@
 
 All notable changes to AetherTV will be documented in this file.
 
+## [2.0.1] - 2026-02-09
+
+### Fixed
+- **Critical**: Fixed crash on app update due to database schema mismatch
+- Added `fallbackToDestructiveMigration` to handle schema changes gracefully
+- Database will recreate tables on schema change (channels will re-scrape on first launch)
+
 ## [2.0.0] - 2026-02-08
 
 ### Fixed (7 Audit Rounds - 20 Critical + 38 High Priority Bugs)
