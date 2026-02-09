@@ -62,13 +62,21 @@ fun PlayerScreen(
         }
     }
 
+    // C20 fix: Do NOT call releasePlayer() from onDispose — it runs on the MAIN thread
+    // and releasePlayer() uses runBlocking which would block the UI thread for up to 2s.
+    // Cleanup is handled properly by ViewModel.onCleared() when the ViewModel is destroyed.
     DisposableEffect(infohash) {
         viewModel.loadChannel(infohash)
-        onDispose { viewModel.releasePlayer() }
+        onDispose { /* cleanup handled by ViewModel.onCleared() */ }
     }
     
+    // Request focus with error handling (H28 fix)
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        try {
+            focusRequester.requestFocus()
+        } catch (e: IllegalStateException) {
+            // FocusRequester not attached yet - this is OK, focus will be gained on interaction
+        }
     }
 
     Box(

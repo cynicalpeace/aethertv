@@ -2,6 +2,20 @@
 
 All notable changes to AetherTV will be documented in this file.
 
+## [2.0.2] - 2026-02-09
+
+### Fixed
+- Added error handling in HomeViewModel flow collection
+- Included all v2.0.0 audit fixes that were not in previous releases
+- Added crash logging for better debugging
+- Added ScraperState for progress tracking
+- Various thread-safety and lifecycle fixes
+
+### Added
+- CrashLogger utility for capturing crash logs
+- High contrast accessibility mode
+- Improved EPG matching with caching
+
 ## [2.0.1] - 2026-02-09
 
 ### Fixed

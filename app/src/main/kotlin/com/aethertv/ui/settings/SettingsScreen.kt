@@ -31,6 +31,7 @@ import com.aethertv.data.repository.UpdateState
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToScraperMonitor: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val updateState by viewModel.updateState.collectAsState()
@@ -129,6 +130,27 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Scraper section
+            SettingsSection(title = "Channel Scraper") {
+                Text(
+                    text = "Discover channels from the AceStream network",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FocusableButton(
+                        text = "📡 Open Scraper Monitor",
+                        onClick = onNavigateToScraperMonitor,
+                        focusRequester = null,
+                        primary = true
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             // Updates section
             SettingsSection(title = "Updates") {
                 UpdateSection(
@@ -189,10 +211,43 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Playback settings placeholder
+            // Appearance section
+            SettingsSection(title = "Appearance") {
+                val highContrast by viewModel.highContrastEnabled.collectAsState()
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "High Contrast Mode",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Improves visibility for users with visual impairments",
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+                    FocusableButton(
+                        text = if (highContrast) "ON" else "OFF",
+                        onClick = { viewModel.toggleHighContrast() },
+                        focusRequester = null,
+                        primary = highContrast
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Playback settings
             SettingsSection(title = "Playback") {
-                SettingsRow(label = "Buffer Size", value = "Default")
-                SettingsRow(label = "Hardware Decoding", value = "Auto")
+                SettingsRow(label = "Buffer Size", value = "Default (15s)")
+                SettingsRow(label = "Hardware Decoding", value = "Enabled")
+                SettingsRow(label = "Preferred Quality", value = "Auto")
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -273,6 +328,47 @@ fun SettingsScreen(
                     onClick = { viewModel.clearWatchHistory() },
                     focusRequester = null
                 )
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Crash Logs section
+            SettingsSection(title = "Diagnostics") {
+                val hasLogs = viewModel.hasCrashLogs()
+                val logSize = viewModel.getCrashLogSizeKb()
+                
+                if (hasLogs) {
+                    Text(
+                        text = "Crash logs: ${logSize}KB",
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FocusableButton(
+                            text = "View Logs",
+                            onClick = { 
+                                // In a real app, this would open a dialog or new screen
+                                // For now we just show a message
+                                viewModel.getCrashLogs()?.let { logs ->
+                                    android.util.Log.d("CrashLogs", logs)
+                                }
+                            },
+                            focusRequester = null
+                        )
+                        FocusableButton(
+                            text = "Clear Logs",
+                            onClick = { viewModel.clearCrashLogs() },
+                            focusRequester = null
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "No crash logs recorded",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(48.dp))
@@ -472,22 +568,11 @@ private fun FilterRulesSection(
             ) {
                 filterTypes.take(3).forEach { (type, label) ->
                     val isSelected = selectedType == type
-                    Surface(
+                    com.aethertv.ui.components.TvChip(
+                        text = label.split(" ").first(),
                         onClick = { selectedType = type },
-                        modifier = Modifier.focusable(),
-                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
-                        colors = ClickableSurfaceDefaults.colors(
-                            containerColor = if (isSelected) Color(0xFF00B4D8) else Color(0xFF2A2A2A),
-                            focusedContainerColor = if (isSelected) Color(0xFF00B4D8) else Color(0xFF444444)
-                        )
-                    ) {
-                        Text(
-                            text = label.split(" ").first(),
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                        isSelected = isSelected
+                    )
                 }
             }
             
@@ -592,39 +677,17 @@ private fun FilterRulesSection(
                         }
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Surface(
+                            com.aethertv.ui.components.TvCompactButton(
+                                text = if (rule.isEnabled) "ON" else "OFF",
                                 onClick = { onToggleRule(rule) },
-                                modifier = Modifier.focusable(),
-                                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
-                                colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = Color(0xFF333333),
-                                    focusedContainerColor = Color(0xFF444444)
-                                )
-                            ) {
-                                Text(
-                                    text = if (rule.isEnabled) "ON" else "OFF",
-                                    fontSize = 10.sp,
-                                    color = if (rule.isEnabled) Color(0xFF4CAF50) else Color.Gray,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
+                                textColor = if (rule.isEnabled) Color(0xFF4CAF50) else Color.Gray
+                            )
                             
-                            Surface(
+                            com.aethertv.ui.components.TvCompactButton(
+                                text = "✕",
                                 onClick = { onDeleteRule(rule) },
-                                modifier = Modifier.focusable(),
-                                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
-                                colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = Color(0xFF333333),
-                                    focusedContainerColor = Color(0xFFF44336)
-                                )
-                            ) {
-                                Text(
-                                    text = "✕",
-                                    fontSize = 12.sp,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
+                                focusedColor = Color(0xFFF44336)
+                            )
                         }
                     }
                 }
@@ -946,6 +1009,9 @@ private fun FocusableButton(
     val baseColor = if (primary) Color(0xFF0077B6) else Color(0xFF2A2A2A)
     val focusedColor = if (primary) Color(0xFF00B4D8) else Color(0xFF444444)
     
+    // Use isFocused state to update colors for proper visual feedback
+    val currentColor = if (isFocused) focusedColor else baseColor
+    
     Surface(
         onClick = onClick,
         modifier = Modifier
@@ -959,9 +1025,18 @@ private fun FocusableButton(
             shape = RoundedCornerShape(8.dp)
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = baseColor,
+            containerColor = currentColor,
             focusedContainerColor = focusedColor
-        )
+        ),
+        border = if (isFocused) {
+            ClickableSurfaceDefaults.border(
+                focusedBorder = androidx.tv.material3.Border(
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                )
+            )
+        } else {
+            ClickableSurfaceDefaults.border()
+        }
     ) {
         Text(
             text = text,

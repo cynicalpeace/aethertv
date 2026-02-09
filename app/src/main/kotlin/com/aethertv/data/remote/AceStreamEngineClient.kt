@@ -18,6 +18,10 @@ class AceStreamEngineClient @Inject constructor(
     private val httpClient: HttpClient,
     private val engineAddress: String = "http://127.0.0.1:6878",
 ) {
+    companion object {
+        // H38 fix: Cap maximum pages to prevent infinite loop if API always returns full pages
+        private const val MAX_PAGES = 100
+    }
     suspend fun waitForConnection(timeout: Duration = 60.seconds) {
         withTimeout(timeout) {
             while (true) {
@@ -46,6 +50,8 @@ class AceStreamEngineClient @Inject constructor(
             allItems.addAll(result.result.results)
             if (result.result.results.size < pageSize) break
             page++
+            // H38 fix: Prevent infinite pagination
+            if (page >= MAX_PAGES) break
         }
         return allItems
     }

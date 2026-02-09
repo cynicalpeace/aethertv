@@ -1,5 +1,7 @@
 package com.aethertv.data.repository
 
+import androidx.room.withTransaction
+import com.aethertv.data.local.AetherTvDatabase
 import com.aethertv.data.local.EpgDao
 import com.aethertv.data.local.entity.EpgChannelEntity
 import com.aethertv.data.local.entity.EpgProgramEntity
@@ -18,10 +20,22 @@ interface EpgRepository {
     suspend fun insertPrograms(programs: List<EpgProgramEntity>)
     suspend fun deleteExpiredPrograms(before: Long)
     suspend fun clearAll()
+    
+    /**
+     * Atomically replaces all EPG data with new data.
+     * Uses a transaction to ensure old data is only deleted if new data insertion succeeds.
+     * Prevents data loss on interrupted sync.
+     */
+    suspend fun replaceAllData(
+        channels: List<EpgChannelEntity>,
+        programs: List<EpgProgramEntity>,
+        batchSize: Int = 100,
+    )
 }
 
 @Singleton
 class EpgRepositoryImpl @Inject constructor(
+    private val database: AetherTvDatabase,
     private val epgDao: EpgDao,
 ) : EpgRepository {
 
@@ -60,6 +74,30 @@ class EpgRepositoryImpl @Inject constructor(
     override suspend fun clearAll() {
         epgDao.deleteAllPrograms()
         epgDao.deleteAllChannels()
+    }
+    
+    /**
+     * Atomically replaces all EPG data within a database transaction.
+     * If any part fails, the entire operation is rolled back, preserving existing data.
+     */
+    override suspend fun replaceAllData(
+        channels: List<EpgChannelEntity>,
+        programs: List<EpgProgramEntity>,
+        batchSize: Int,
+    ) {
+        database.withTransaction {
+            // Clear old data
+            epgDao.deleteAllPrograms()
+            epgDao.deleteAllChannels()
+            
+            // Insert new data in batches
+            channels.chunked(batchSize).forEach { batch ->
+                epgDao.insertChannels(batch)
+            }
+            programs.chunked(batchSize).forEach { batch ->
+                epgDao.insertPrograms(batch)
+            }
+        }
     }
 
     private fun EpgProgramEntity.toDomain(): EpgProgram {

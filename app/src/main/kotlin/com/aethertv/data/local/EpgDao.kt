@@ -32,7 +32,7 @@ interface EpgDao {
     @Query(
         """
         SELECT * FROM epg_programs
-        WHERE startTime >= :startTime AND endTime <= :endTime
+        WHERE startTime < :endTime AND endTime > :startTime
         ORDER BY channelId, startTime ASC
         """
     )

@@ -2,6 +2,7 @@ package com.aethertv.epg
 
 import com.aethertv.data.local.entity.EpgChannelEntity
 import com.aethertv.data.remote.AceStreamChannel
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,9 +43,14 @@ class EpgMatcher @Inject constructor() {
         private val NON_ALPHANUMERIC = Regex("[^a-z0-9\\s]")
         private val MULTI_SPACE = Regex("\\s+")
 
+        /**
+         * Normalize channel name for fuzzy matching.
+         * Uses Locale.ROOT to ensure consistent behavior across all locales (H32 fix).
+         * This is critical for Turkish locale where "I".lowercase() = "ı" (dotless i).
+         */
         fun String.normalizeForMatching(): String {
             return this
-                .lowercase()
+                .lowercase(Locale.ROOT)  // H32 fix: explicit locale
                 .replace(QUALITY_REGEX, "")
                 .replace(COUNTRY_REGEX, "")
                 .replace(NON_ALPHANUMERIC, "")

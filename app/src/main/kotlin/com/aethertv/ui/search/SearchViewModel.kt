@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,6 +24,10 @@ data class SearchUiState(
 class SearchViewModel @Inject constructor(
     private val searchChannelsUseCase: SearchChannelsUseCase,
 ) : ViewModel() {
+
+    companion object {
+        private const val DEBOUNCE_MS = 300L
+    }
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
@@ -38,9 +43,17 @@ class SearchViewModel @Inject constructor(
         }
         searchJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSearching = true)
-            delay(300) // debounce
-            searchChannelsUseCase(query).collect { results ->
+            delay(DEBOUNCE_MS) // debounce
+            try {
+                // Use .first() instead of .collect{} to get one-shot result
+                // This prevents lingering flow collection if user types again
+                val results = searchChannelsUseCase(query).first()
                 _uiState.value = _uiState.value.copy(results = results, isSearching = false)
+            } catch (e: Exception) {
+                // Handle cancellation gracefully
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    _uiState.value = _uiState.value.copy(results = emptyList(), isSearching = false)
+                }
             }
         }
     }

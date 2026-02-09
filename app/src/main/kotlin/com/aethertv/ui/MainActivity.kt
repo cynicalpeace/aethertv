@@ -29,9 +29,10 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val isFirstRun by settingsDataStore.isFirstRun.collectAsState(initial = true)
+            val highContrast by settingsDataStore.highContrastEnabled.collectAsState(initial = false)
             var searchQuery by remember { mutableStateOf(initialSearchQuery) }
             
-            AetherTvTheme {
+            AetherTvTheme(highContrast = highContrast) {
                 AetherTvNavHost(
                     isFirstRun = isFirstRun,
                     initialSearchQuery = searchQuery,

@@ -17,6 +17,7 @@ import com.aethertv.ui.guide.GuideScreen
 import com.aethertv.ui.home.HomeScreen
 import com.aethertv.ui.player.PlayerScreen
 import com.aethertv.ui.search.SearchScreen
+import com.aethertv.ui.settings.ScraperMonitorScreen
 import com.aethertv.ui.settings.SettingsScreen
 import com.aethertv.ui.setup.FirstRunScreen
 import kotlinx.serialization.Serializable
@@ -39,6 +40,9 @@ object SearchRoute
 
 @Serializable
 object SettingsRoute
+
+@Serializable
+object ScraperMonitorRoute
 
 @Composable
 fun AetherTvNavHost(
@@ -109,6 +113,14 @@ fun AetherTvNavHost(
         }
         composable<SettingsRoute> {
             SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToScraperMonitor = {
+                    navController.navigate(ScraperMonitorRoute)
+                },
+            )
+        }
+        composable<ScraperMonitorRoute> {
+            ScraperMonitorScreen(
                 onBack = { navController.popBackStack() },
             )
         }

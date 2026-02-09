@@ -255,6 +255,11 @@ class FirstRunViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Extract APK from assets to cache directory.
+     * Uses AssetFileDescriptor to get actual file size for accurate progress.
+     * Note: input.available() does NOT return total file size! (C14 fix)
+     */
     private suspend fun extractApkFromAssets(): File? {
         return try {
             val cacheDir = context.cacheDir
@@ -265,18 +270,35 @@ class FirstRunViewModel @Inject constructor(
                 apkFile.delete()
             }
             
+            // Get actual file size using AssetFileDescriptor (C14 fix)
+            val assetFd = try {
+                context.assets.openFd(BUNDLED_APK_NAME)
+            } catch (e: Exception) {
+                // Asset might be compressed - fall back to no-progress mode
+                Log.w(TAG, "Cannot get asset file descriptor (compressed?): ${e.message}")
+                null
+            }
+            
+            val totalSize = assetFd?.length ?: -1L
+            assetFd?.close()
+            
             context.assets.open(BUNDLED_APK_NAME).use { input ->
                 FileOutputStream(apkFile).use { output ->
                     val buffer = ByteArray(8192)
                     var read: Int
                     var total = 0L
-                    val size = input.available().toLong()
                     
                     while (input.read(buffer).also { read = it } != -1) {
                         output.write(buffer, 0, read)
                         total += read
                         
-                        val progress = if (size > 0) (total.toFloat() / size) * 0.5f else 0f
+                        // Only show progress if we know the total size
+                        val progress = if (totalSize > 0) {
+                            (total.toFloat() / totalSize) * 0.5f
+                        } else {
+                            // Unknown size - show indeterminate progress
+                            0.25f
+                        }
                         _uiState.value = _uiState.value.copy(installProgress = progress)
                     }
                 }

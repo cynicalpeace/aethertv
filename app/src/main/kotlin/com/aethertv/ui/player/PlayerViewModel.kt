@@ -29,6 +29,14 @@ data class PlayerUiState(
     val bufferPercent: Int = 0,
 )
 
+/**
+ * Tracks an active AceStream session for proper cleanup.
+ */
+private data class ActiveSession(
+    val infohash: String,
+    val commandUrl: String,
+)
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val exoPlayer: ExoPlayer,
@@ -40,6 +48,9 @@ class PlayerViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+    
+    // Track active session for proper cleanup (C10/H24 fix)
+    private var activeSession: ActiveSession? = null
     
     companion object {
         private const val TAG = "PlayerViewModel"
@@ -94,7 +105,17 @@ class PlayerViewModel @Inject constructor(
     
     private suspend fun startStream(infohash: String) {
         try {
+            // Stop any existing session first (C10 fix)
+            stopCurrentSession()
+            
             val streamInfo = engineClient.requestStream(infohash)
+            
+            // Store session for cleanup (H24 fix)
+            activeSession = ActiveSession(
+                infohash = infohash,
+                commandUrl = streamInfo.commandUrl,
+            )
+            
             val mediaItem = androidx.media3.common.MediaItem.fromUri(streamInfo.playbackUrl)
             exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
@@ -111,10 +132,26 @@ class PlayerViewModel @Inject constructor(
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start stream", e)
+            activeSession = null
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 error = e.message ?: "Failed to connect to stream",
             )
+        }
+    }
+    
+    /**
+     * Stop the current AceStream session if one exists.
+     */
+    private suspend fun stopCurrentSession() {
+        activeSession?.let { session ->
+            try {
+                engineClient.stopStream(session.commandUrl)
+                Log.d(TAG, "Stopped AceStream session for ${session.infohash}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop AceStream session: ${e.message}")
+            }
+            activeSession = null
         }
     }
     
@@ -173,11 +210,33 @@ class PlayerViewModel @Inject constructor(
     fun releasePlayer() {
         exoPlayer.stop()
         exoPlayer.clearMediaItems()
+        // Stop AceStream session - this must complete even during ViewModel cleanup
+        // We capture the session before nulling to ensure cleanup (C15 fix)
+        val sessionToStop = activeSession
+        activeSession = null
+        
+        sessionToStop?.let { session ->
+            // Use kotlinx.coroutines.runBlocking for critical cleanup
+            // This ensures the stream is stopped even when called from onCleared()
+            // where viewModelScope is already cancelled
+            try {
+                kotlinx.coroutines.runBlocking {
+                    kotlinx.coroutines.withTimeoutOrNull(2000L) {
+                        engineClient.stopStream(session.commandUrl)
+                    }
+                }
+                Log.d(TAG, "Stopped AceStream session on release: ${session.infohash}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop stream on release: ${e.message}")
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
+        // Remove listener first to prevent stale updates (H22 fix)
         exoPlayer.removeListener(playerListener)
+        // releasePlayer uses runBlocking for cleanup so it works even after scope cancellation (C15 fix)
         releasePlayer()
     }
 }

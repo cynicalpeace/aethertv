@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -23,13 +24,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,9 +54,16 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
+    val resultsFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     
+    // Request focus with error handling (H28 fix)
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        try {
+            focusRequester.requestFocus()
+        } catch (e: IllegalStateException) {
+            // FocusRequester not attached yet - this is OK, focus will be gained on interaction
+        }
     }
 
     Box(
@@ -88,13 +103,31 @@ fun SearchScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Search input
+            // Search input with D-pad navigation support
             BasicTextField(
                 value = uiState.query,
                 onValueChange = { viewModel.updateQuery(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    .onKeyEvent { event ->
+                        // Handle D-pad down to move focus to results grid
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionDown -> {
+                                    if (uiState.results.isNotEmpty()) {
+                                        focusManager.moveFocus(FocusDirection.Down)
+                                        true
+                                    } else false
+                                }
+                                Key.Back, Key.Escape -> {
+                                    onBack()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(8.dp))
                     .padding(16.dp),
                 textStyle = TextStyle(

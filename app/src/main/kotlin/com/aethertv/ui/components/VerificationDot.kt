@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aethertv.domain.model.Channel
 import com.aethertv.ui.theme.VerifiedAmber
@@ -22,17 +24,18 @@ fun VerificationDot(
     val isVerified = channel.isVerified
     val peerCount = channel.verifiedPeerCount ?: 0
 
-    val color = when {
-        isVerified == null -> Color.Gray // Not yet verified
-        !isVerified -> VerifiedRed       // Verified as offline
-        peerCount < 5 -> VerifiedAmber   // Low peers
-        else -> VerifiedGreen            // Good
+    val (color, description) = when {
+        isVerified == null -> Color.Gray to "Not verified"
+        !isVerified -> VerifiedRed to "Offline"
+        peerCount < 5 -> VerifiedAmber to "Low peers, may be unstable"
+        else -> VerifiedGreen to "Online with ${peerCount} peers"
     }
 
     Box(
         modifier = modifier
             .size(12.dp)
             .clip(CircleShape)
-            .background(color),
+            .background(color)
+            .semantics { contentDescription = description },
     )
 }

@@ -10,6 +10,7 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -94,24 +95,61 @@ class UpdateRepository @Inject constructor(
         }
     }
     
+    /**
+     * Compare version strings to determine if latest is newer than current.
+     * Handles versions like: "1.2.3", "1.2.3-debug", "1.2.3-beta1", "1.2.3-rc2"
+     * Strips all non-numeric suffixes from each component (H27 fix).
+     */
     private fun isNewerVersion(latest: String, current: String): Boolean {
-        // Handle debug suffix
-        val latestClean = latest.removeSuffix("-debug").split(".")
-        val currentClean = current.removeSuffix("-debug").split(".")
+        val latestClean = parseVersionParts(latest)
+        val currentClean = parseVersionParts(current)
         
         for (i in 0 until maxOf(latestClean.size, currentClean.size)) {
-            val l = latestClean.getOrNull(i)?.toIntOrNull() ?: 0
-            val c = currentClean.getOrNull(i)?.toIntOrNull() ?: 0
+            val l = latestClean.getOrNull(i) ?: 0
+            val c = currentClean.getOrNull(i) ?: 0
             if (l > c) return true
             if (l < c) return false
         }
         return false
     }
     
+    /**
+     * Parse version string into list of integer parts.
+     * "1.2.3-beta1" → [1, 2, 3]
+     * "1.2.3.4" → [1, 2, 3, 4]
+     * 
+     * Handles malformed versions gracefully (H36 fix):
+     * - Very long digit sequences are capped to prevent overflow
+     * - Invalid parts are treated as 0
+     */
+    private fun parseVersionParts(version: String): List<Int> {
+        // Remove common suffixes first
+        val withoutSuffix = version
+            .removeSuffix("-debug")
+            .removeSuffix("-release")
+        
+        return withoutSuffix.split(".").mapNotNull { part ->
+            // Extract leading digits from each part
+            // "3-beta1" → "3" → 3
+            // "10rc2" → "10" → 10
+            val digits = part.takeWhile { it.isDigit() }
+            
+            // H36 fix: Cap digit length to prevent integer overflow
+            // Version numbers should never exceed 9 digits (999,999,999)
+            if (digits.length > 9) {
+                Int.MAX_VALUE  // Treat as "very large" version
+            } else {
+                digits.toIntOrNull() ?: 0
+            }
+        }
+    }
+    
     fun downloadUpdate(release: GitHubRelease): Flow<UpdateState> = flow {
         emit(UpdateState.Downloading(0f))
         
-        val apkAsset = release.assets.find { it.name.endsWith(".apk") }
+        // Look for APK with our naming convention first, fall back to any .apk
+        val apkAsset = release.assets.find { it.name.startsWith("aethertv-") && it.name.endsWith(".apk") }
+            ?: release.assets.find { it.name.endsWith(".apk") }
             ?: run {
                 emit(UpdateState.Error("No APK found in release"))
                 return@flow
@@ -119,18 +157,49 @@ class UpdateRepository @Inject constructor(
         
         try {
             val apkFile = File(context.cacheDir, APK_FILENAME)
+            val totalSize = apkAsset.size
             
-            // Simple download - write full response to file
-            val response: HttpResponse = httpClient.get(apkAsset.browser_download_url)
-            val bytes = response.body<ByteArray>()
-            
-            emit(UpdateState.Downloading(0.5f))
+            // Track progress externally for proper emission (H23 fix)
+            var lastEmittedProgress = 0f
             
             withContext(Dispatchers.IO) {
-                apkFile.writeBytes(bytes)
+                // Stream download to file to avoid OOM on large APKs
+                httpClient.prepareGet(apkAsset.browser_download_url).execute { response ->
+                    if (response.status.value >= 400) {
+                        throw Exception("Download failed with status: ${response.status}")
+                    }
+                    
+                    val channel = response.bodyAsChannel()
+                    
+                    // Delete existing file if any
+                    if (apkFile.exists()) {
+                        apkFile.delete()
+                    }
+                    
+                    apkFile.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(8192)
+                        var bytesDownloaded = 0L
+                        
+                        while (!channel.isClosedForRead) {
+                            val bytesRead = channel.readAvailable(buffer)
+                            if (bytesRead > 0) {
+                                output.write(buffer, 0, bytesRead)
+                                bytesDownloaded += bytesRead
+                                
+                                // Track progress for emission after this block
+                                lastEmittedProgress = if (totalSize > 0) {
+                                    (bytesDownloaded.toFloat() / totalSize).coerceIn(0f, 1f)
+                                } else {
+                                    0.5f // Unknown size
+                                }
+                            }
+                        }
+                    }
+                }
             }
             
-            emit(UpdateState.Downloading(1f))
+            // Emit final progress state
+            emit(UpdateState.Downloading(lastEmittedProgress.coerceAtLeast(0.99f)))
             emit(UpdateState.ReadyToInstall(apkFile))
         } catch (e: Exception) {
             emit(UpdateState.Error("Download failed: ${e.message}"))

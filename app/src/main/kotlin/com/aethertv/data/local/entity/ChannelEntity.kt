@@ -1,9 +1,13 @@
 package com.aethertv.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "channels")
+@Entity(
+    tableName = "channels",
+    indices = [Index("epgChannelId")]
+)
 data class ChannelEntity(
     @PrimaryKey val infohash: String,
     val name: String,

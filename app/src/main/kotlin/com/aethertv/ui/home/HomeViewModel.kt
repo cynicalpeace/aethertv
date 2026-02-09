@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,6 +58,12 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    
+    // EPG match cache - persisted across flow emissions to avoid repeated O(N*M) matching (C17 fix)
+    // Key: channel name (normalized), Value: matched EPG channel ID or null if no match
+    private val epgMatchCache = mutableMapOf<String, String?>()
+    // Track which EPG channels we last matched against to invalidate cache on EPG data change
+    private var lastEpgChannelCount = 0
 
     companion object {
         private const val TAG = "HomeViewModel"
@@ -64,27 +71,41 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Observe channels with EPG data
-            combine(
+            try {
+                observeChannels()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error observing channels", e)
+                _uiState.value = HomeUiState(
+                    isLoading = false,
+                    engineStatus = EngineStatus.NOT_FOUND,
+                )
+            }
+        }
+    }
+    
+    private suspend fun observeChannels() {
+            // Observe channels with EPG data using type-safe combine
+            // We use nested combine calls to maintain type safety
+            val channelsAndCategoriesFlow = combine(
                 getChannelsUseCase.all(),
                 getChannelsUseCase.categories(),
-                watchHistoryDao.observeRecent(10),
+            ) { channels, categories -> channels to categories }
+            
+            val epgFlow = combine(
                 getEpgUseCase.observeAllEpgChannels(),
                 getEpgUseCase.observeProgramsInRange(
                     System.currentTimeMillis() - 3600_000,
                     System.currentTimeMillis() + 7200_000,
                 ),
-            ) { values ->
-                @Suppress("UNCHECKED_CAST")
-                val allChannels = values[0] as List<Channel>
-                @Suppress("UNCHECKED_CAST")
-                val categories = values[1] as List<String>
-                @Suppress("UNCHECKED_CAST")
-                val recentHistory = values[2] as List<com.aethertv.data.local.entity.WatchHistoryEntity>
-                @Suppress("UNCHECKED_CAST")
-                val epgChannels = values[3] as List<com.aethertv.data.local.entity.EpgChannelEntity>
-                @Suppress("UNCHECKED_CAST")
-                val allPrograms = values[4] as List<EpgProgram>
+            ) { epgChannels, programs -> epgChannels to programs }
+            
+            combine(
+                channelsAndCategoriesFlow,
+                watchHistoryDao.observeRecent(10),
+                epgFlow,
+            ) { channelsAndCategories, recentHistory, epgData ->
+                val (allChannels, categories) = channelsAndCategories
+                val (epgChannels, allPrograms) = epgData
                 
                 val now = System.currentTimeMillis()
                 val channelMap = allChannels.associateBy { it.infohash }
@@ -92,11 +113,14 @@ class HomeViewModel @Inject constructor(
                 // Group programs by EPG channel ID
                 val programsByEpgChannel = allPrograms.groupBy { it.channelId }
                 
-                // Build EPG match cache
-                val epgMatchCache = mutableMapOf<String, String?>() // channel name -> epg channel id
+                // Invalidate cache if EPG channels changed (C17 fix)
+                if (epgChannels.size != lastEpgChannelCount) {
+                    epgMatchCache.clear()
+                    lastEpgChannelCount = epgChannels.size
+                }
                 
                 fun withEpg(channel: Channel): ChannelWithEpg {
-                    // Find matching EPG channel
+                    // Find matching EPG channel - use class-level cache (C17 fix)
                     val epgChannelId = channel.epgChannelId ?: epgMatchCache.getOrPut(channel.name) {
                         epgMatcher.findBestMatchByName(channel.name, epgChannels)?.xmltvId
                     }
@@ -150,8 +174,10 @@ class HomeViewModel @Inject constructor(
                     isLoading = false,
                     engineStatus = status,
                 )
+            }.catch { e ->
+                Log.e(TAG, "Error in channel flow", e)
+                emit(HomeUiState(isLoading = false, engineStatus = EngineStatus.NOT_FOUND))
             }.collect { _uiState.value = it }
-        }
     }
 
     private suspend fun tryFetchFromAceStream(): Boolean {

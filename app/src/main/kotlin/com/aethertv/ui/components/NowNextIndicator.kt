@@ -12,7 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.aethertv.domain.model.EpgProgram
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,10 +37,28 @@ private val liveColor = Color(0xFFE63946)
 private val accentColor = Color(0xFF00B4D8)
 private val progressBg = Color(0xFF333333)
 
+// Pre-created gradient brush to avoid allocation on every recomposition
+private val progressGradientBrush = Brush.horizontalGradient(
+    colors = listOf(liveColor, accentColor),
+)
+
+// C19 fix: ThreadLocal time formatter for thread safety.
+// SimpleDateFormat is NOT thread-safe; concurrent access from multiple composables
+// can corrupt output or throw ArrayIndexOutOfBoundsException.
+// Pattern matches GuideScreen.kt's correct ThreadLocal approach.
+private val NowNextTimeFormatter = ThreadLocal.withInitial {
+    SimpleDateFormat("HH:mm", Locale.ROOT)
+}
+
 /**
  * Compact Now/Next indicator for channel cards.
  * Shows current program with progress bar and optional next program.
  */
+/**
+ * Progress update interval for live EPG indicators (30 seconds).
+ */
+private const val PROGRESS_UPDATE_INTERVAL_MS = 30_000L
+
 @Composable
 fun NowNextIndicator(
     currentProgram: EpgProgram?,
@@ -47,14 +70,26 @@ fun NowNextIndicator(
         return
     }
 
-    val now = System.currentTimeMillis()
-    val progress = remember(currentProgram, now) {
-        val elapsed = now - currentProgram.startTime
-        val duration = currentProgram.endTime - currentProgram.startTime
-        (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+    // Use mutable state that updates periodically for live progress
+    var progress by remember { mutableFloatStateOf(0f) }
+    
+    // Calculate initial progress and update periodically
+    LaunchedEffect(currentProgram) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            val elapsed = now - currentProgram.startTime
+            val duration = currentProgram.endTime - currentProgram.startTime
+            progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+            
+            // Stop updating if program has ended
+            if (now >= currentProgram.endTime) break
+            
+            delay(PROGRESS_UPDATE_INTERVAL_MS)
+        }
     }
 
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    // C19 fix: Use ThreadLocal getter for thread-safe formatter access
+    val timeFormatter = NowNextTimeFormatter.get()!!
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -89,7 +124,7 @@ fun NowNextIndicator(
             )
         }
 
-        // Progress bar
+        // Progress bar using pre-created gradient brush
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,11 +136,7 @@ fun NowNextIndicator(
                 modifier = Modifier
                     .fillMaxWidth(progress)
                     .height(3.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(liveColor, accentColor),
-                        ),
-                    ),
+                    .background(progressGradientBrush),
             )
         }
 
@@ -149,11 +180,22 @@ fun NowIndicatorCompact(
 ) {
     if (currentProgram == null) return
 
-    val now = System.currentTimeMillis()
-    val progress = remember(currentProgram, now) {
-        val elapsed = now - currentProgram.startTime
-        val duration = currentProgram.endTime - currentProgram.startTime
-        (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+    // Use mutable state that updates periodically for live progress
+    var progress by remember { mutableFloatStateOf(0f) }
+    
+    // Calculate initial progress and update periodically
+    LaunchedEffect(currentProgram) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            val elapsed = now - currentProgram.startTime
+            val duration = currentProgram.endTime - currentProgram.startTime
+            progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+            
+            // Stop updating if program has ended
+            if (now >= currentProgram.endTime) break
+            
+            delay(PROGRESS_UPDATE_INTERVAL_MS)
+        }
     }
 
     Column(

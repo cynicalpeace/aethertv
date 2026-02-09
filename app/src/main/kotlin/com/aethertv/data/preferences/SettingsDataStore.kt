@@ -39,6 +39,9 @@ class SettingsDataStore @Inject constructor(
     // Playback settings
     val preferredQuality: Flow<String> = dataStore.data.map { it[PREFERRED_QUALITY] ?: "auto" }
 
+    // Appearance settings
+    val highContrastEnabled: Flow<Boolean> = dataStore.data.map { it[HIGH_CONTRAST] ?: false }
+
     // App state
     val lastScrapeTime: Flow<Long> = dataStore.data.map { it[LAST_SCRAPE_TIME] ?: 0L }
     val isFirstRun: Flow<Boolean> = dataStore.data.map { it[IS_FIRST_RUN] ?: true }
@@ -99,6 +102,10 @@ class SettingsDataStore @Inject constructor(
         dataStore.edit { it[PREFERRED_QUALITY] = quality }
     }
 
+    suspend fun setHighContrastEnabled(enabled: Boolean) {
+        dataStore.edit { it[HIGH_CONTRAST] = enabled }
+    }
+
     suspend fun setLastScrapeTime(time: Long) {
         dataStore.edit { it[LAST_SCRAPE_TIME] = time }
     }
@@ -122,6 +129,7 @@ class SettingsDataStore @Inject constructor(
         private val VERIFY_ON_LAUNCH = booleanPreferencesKey("verify_on_launch")
         private val NOTIFY_STREAM_DOWN = booleanPreferencesKey("notify_stream_down")
         private val PREFERRED_QUALITY = stringPreferencesKey("preferred_quality")
+        private val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
         private val LAST_SCRAPE_TIME = longPreferencesKey("last_scrape_time")
         private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
     }

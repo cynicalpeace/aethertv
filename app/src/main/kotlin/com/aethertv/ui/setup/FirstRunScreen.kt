@@ -249,7 +249,7 @@ private fun EngineInstallStep(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Progress indicator placeholder
+                // Installation options
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -471,6 +471,9 @@ private fun FocusableButton(
     val baseColor = if (primary) Color(0xFF0077B6) else Color(0xFF2A2A2A)
     val focusedColor = if (primary) accentColor else Color(0xFF444444)
     
+    // Use isFocused state to update colors for proper visual feedback
+    val currentColor = if (isFocused) focusedColor else baseColor
+    
     Surface(
         onClick = onClick,
         modifier = Modifier
@@ -481,9 +484,18 @@ private fun FocusableButton(
             shape = RoundedCornerShape(8.dp)
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = baseColor,
+            containerColor = currentColor,
             focusedContainerColor = focusedColor
-        )
+        ),
+        border = if (isFocused) {
+            ClickableSurfaceDefaults.border(
+                focusedBorder = androidx.tv.material3.Border(
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                )
+            )
+        } else {
+            ClickableSurfaceDefaults.border()
+        }
     ) {
         Text(
             text = text,

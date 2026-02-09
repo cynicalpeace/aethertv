@@ -1,8 +1,12 @@
 package com.aethertv.scraper
 
+import android.util.Log
 import com.aethertv.data.remote.AceStreamChannel
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "ChannelFilter"
 
 data class FilterConfig(
     val categoryRemapRules: List<CategoryRemapRule> = emptyList(),
@@ -15,7 +19,68 @@ data class FilterConfig(
     val countryWhitelist: Set<String> = emptySet(),
     val nameIncludePatterns: List<String> = emptyList(),
     val nameExcludePatterns: List<String> = emptyList(),
-)
+) {
+    // Pre-compiled regex patterns for performance
+    // Compiled once when config is created, reused for all channels
+    // Invalid patterns are logged and skipped instead of crashing (H21 fix)
+    val compiledIncludePatterns: List<Regex> by lazy {
+        nameIncludePatterns.mapNotNull { pattern ->
+            try {
+                Regex(pattern, RegexOption.IGNORE_CASE)
+            } catch (e: Exception) {
+                Log.e(TAG, "Invalid include pattern '$pattern': ${e.message}")
+                null
+            }
+        }
+    }
+    
+    val compiledExcludePatterns: List<Regex> by lazy {
+        nameExcludePatterns.mapNotNull { pattern ->
+            try {
+                Regex(pattern, RegexOption.IGNORE_CASE)
+            } catch (e: Exception) {
+                Log.e(TAG, "Invalid exclude pattern '$pattern': ${e.message}")
+                null
+            }
+        }
+    }
+    
+    val compiledCategoryRemapPatterns: List<Pair<Regex, String>> by lazy {
+        categoryRemapRules.mapNotNull { rule ->
+            try {
+                Regex(rule.sourcePattern, RegexOption.IGNORE_CASE) to rule.targetCategory
+            } catch (e: Exception) {
+                Log.e(TAG, "Invalid category remap pattern '${rule.sourcePattern}': ${e.message}")
+                null
+            }
+        }
+    }
+    
+    val compiledNameToCategoryPatterns: List<Pair<Regex, String>> by lazy {
+        nameToCategoryRules.mapNotNull { rule ->
+            try {
+                Regex(rule.namePattern, RegexOption.IGNORE_CASE) to rule.category
+            } catch (e: Exception) {
+                Log.e(TAG, "Invalid name-to-category pattern '${rule.namePattern}': ${e.message}")
+                null
+            }
+        }
+    }
+    
+    // Pre-computed lowercase sets using Locale.ROOT for consistent matching (H32 fix)
+    // This prevents issues in Turkish locale where "I".lowercase() = "ı"
+    val lowercaseCategoryWhitelist: Set<String> by lazy {
+        categoryWhitelist.map { it.lowercase(Locale.ROOT) }.toSet()
+    }
+    
+    val lowercaseLanguageWhitelist: Set<String> by lazy {
+        languageWhitelist.map { it.lowercase(Locale.ROOT) }.toSet()
+    }
+    
+    val lowercaseCountryWhitelist: Set<String> by lazy {
+        countryWhitelist.map { it.lowercase(Locale.ROOT) }.toSet()
+    }
+}
 
 data class CategoryRemapRule(
     val sourcePattern: String,
@@ -30,54 +95,89 @@ data class NameToCategoryRule(
 @Singleton
 class ChannelFilter @Inject constructor()
 
+/**
+ * Apply all filters to a list of channels.
+ * Uses pre-compiled regex patterns from FilterConfig for performance.
+ */
 fun List<AceStreamChannel>.applyFilters(config: FilterConfig): List<AceStreamChannel> {
     return this
-        .map { it.remapCategories(config.categoryRemapRules) }
-        .map { it.assignCategoriesByName(config.nameToCategoryRules) }
+        .map { it.remapCategories(config) }
+        .map { it.assignCategoriesByName(config) }
         .filter { config.statusFilter.isEmpty() || it.status in config.statusFilter }
         .filter { it.availability >= config.availabilityThreshold }
-        .filter { it.matchesCategories(config.categoryWhitelist, config.strict) }
-        .filter { it.matchesLanguages(config.languageWhitelist) }
-        .filter { it.matchesCountries(config.countryWhitelist) }
-        .filter { it.matchesNameRegex(config.nameIncludePatterns) }
-        .filterNot { it.matchesNameRegex(config.nameExcludePatterns) }
+        .filter { it.matchesCategories(config) }
+        .filter { it.matchesLanguages(config) }
+        .filter { it.matchesCountries(config) }
+        .filter { it.matchesIncludePatterns(config) }
+        .filterNot { it.matchesExcludePatterns(config) }
 }
 
-fun AceStreamChannel.remapCategories(rules: List<CategoryRemapRule>): AceStreamChannel {
-    if (rules.isEmpty()) return this
+/**
+ * Remap categories using pre-compiled patterns from config.
+ */
+fun AceStreamChannel.remapCategories(config: FilterConfig): AceStreamChannel {
+    if (config.compiledCategoryRemapPatterns.isEmpty()) return this
     val remapped = categories.map { cat ->
-        rules.firstOrNull { Regex(it.sourcePattern, RegexOption.IGNORE_CASE).matches(cat) }
-            ?.targetCategory ?: cat
+        config.compiledCategoryRemapPatterns.firstOrNull { (regex, _) -> regex.matches(cat) }
+            ?.second ?: cat
     }
     return copy(categories = remapped)
 }
 
-fun AceStreamChannel.assignCategoriesByName(rules: List<NameToCategoryRule>): AceStreamChannel {
+/**
+ * Assign category based on name using pre-compiled patterns from config.
+ */
+fun AceStreamChannel.assignCategoriesByName(config: FilterConfig): AceStreamChannel {
     if (categories.isNotEmpty()) return this
-    val matched = rules.firstOrNull { Regex(it.namePattern, RegexOption.IGNORE_CASE).containsMatchIn(name) }
-    return if (matched != null) copy(categories = listOf(matched.category)) else this
+    val matched = config.compiledNameToCategoryPatterns.firstOrNull { (regex, _) -> 
+        regex.containsMatchIn(name) 
+    }
+    return if (matched != null) copy(categories = listOf(matched.second)) else this
 }
 
-fun AceStreamChannel.matchesCategories(whitelist: Set<String>, strict: Boolean): Boolean {
-    if (whitelist.isEmpty()) return true
-    return if (strict) {
-        categories.all { it.lowercase() in whitelist.map { w -> w.lowercase() } }
+/**
+ * Check if channel matches category whitelist using pre-computed lowercase set.
+ * Uses Locale.ROOT for consistent matching across all locales (H32 fix).
+ */
+fun AceStreamChannel.matchesCategories(config: FilterConfig): Boolean {
+    if (config.lowercaseCategoryWhitelist.isEmpty()) return true
+    return if (config.strict) {
+        categories.all { it.lowercase(Locale.ROOT) in config.lowercaseCategoryWhitelist }
     } else {
-        categories.any { it.lowercase() in whitelist.map { w -> w.lowercase() } }
+        categories.any { it.lowercase(Locale.ROOT) in config.lowercaseCategoryWhitelist }
     }
 }
 
-fun AceStreamChannel.matchesLanguages(whitelist: Set<String>): Boolean {
-    if (whitelist.isEmpty()) return true
-    return languages.any { it.lowercase() in whitelist.map { w -> w.lowercase() } }
+/**
+ * Check if channel matches language whitelist using pre-computed lowercase set.
+ * Uses Locale.ROOT for consistent matching across all locales (H32 fix).
+ */
+fun AceStreamChannel.matchesLanguages(config: FilterConfig): Boolean {
+    if (config.lowercaseLanguageWhitelist.isEmpty()) return true
+    return languages.any { it.lowercase(Locale.ROOT) in config.lowercaseLanguageWhitelist }
 }
 
-fun AceStreamChannel.matchesCountries(whitelist: Set<String>): Boolean {
-    if (whitelist.isEmpty()) return true
-    return countries.any { it.lowercase() in whitelist.map { w -> w.lowercase() } }
+/**
+ * Check if channel matches country whitelist using pre-computed lowercase set.
+ * Uses Locale.ROOT for consistent matching across all locales (H32 fix).
+ */
+fun AceStreamChannel.matchesCountries(config: FilterConfig): Boolean {
+    if (config.lowercaseCountryWhitelist.isEmpty()) return true
+    return countries.any { it.lowercase(Locale.ROOT) in config.lowercaseCountryWhitelist }
 }
 
-fun AceStreamChannel.matchesNameRegex(patterns: List<String>): Boolean {
-    if (patterns.isEmpty()) return false
-    return patterns.any { Regex(it, RegexOption.IGNORE_CASE).containsMatchIn(name) }
+/**
+ * Check if channel name matches any include pattern using pre-compiled regex.
+ */
+fun AceStreamChannel.matchesIncludePatterns(config: FilterConfig): Boolean {
+    if (config.compiledIncludePatterns.isEmpty()) return true // No include = include all
+    return config.compiledIncludePatterns.any { it.containsMatchIn(name) }
+}
+
+/**
+ * Check if channel name matches any exclude pattern using pre-compiled regex.
+ */
+fun AceStreamChannel.matchesExcludePatterns(config: FilterConfig): Boolean {
+    if (config.compiledExcludePatterns.isEmpty()) return false // No exclude = exclude none
+    return config.compiledExcludePatterns.any { it.containsMatchIn(name) }
 }

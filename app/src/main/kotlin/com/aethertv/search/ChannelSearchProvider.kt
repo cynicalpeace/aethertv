@@ -8,24 +8,35 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.provider.BaseColumns
+import android.util.Log
 import com.aethertv.data.local.AetherTvDatabase
+import com.aethertv.data.local.entity.ChannelEntity
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /**
  * Content provider for Android TV global search integration.
  * Provides channel suggestions when user searches via voice or keyboard.
+ * 
+ * Note: Uses a background thread with timeout instead of runBlocking
+ * to avoid blocking the binder thread and causing ANRs.
  */
 class ChannelSearchProvider : ContentProvider() {
 
     companion object {
+        private const val TAG = "ChannelSearchProvider"
         private const val AUTHORITY = "com.aethertv.app.search"
         private const val SEARCH_SUGGEST = 1
         private const val SEARCH_CHANNEL = 2
+        private const val QUERY_TIMEOUT_MS = 2000L
         
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(AUTHORITY, SearchManager.SUGGEST_URI_PATH_QUERY, SEARCH_SUGGEST)
@@ -68,6 +79,10 @@ class ChannelSearchProvider : ContentProvider() {
         }
     }
     
+    /**
+     * Get search suggestions with timeout to avoid ANR.
+     * Uses a background thread instead of runBlocking on the binder thread.
+     */
     private fun getSuggestions(query: String): Cursor {
         val cursor = MatrixCursor(arrayOf(
             BaseColumns._ID,
@@ -78,24 +93,50 @@ class ChannelSearchProvider : ContentProvider() {
             SearchManager.SUGGEST_COLUMN_INTENT_ACTION  // Action
         ))
         
-        runBlocking {
+        val latch = CountDownLatch(1)
+        val results = mutableListOf<ChannelEntity>()
+        
+        // Run query on background thread with timeout (M25 fix - named thread)
+        thread(name = "channel-search-query") {
             try {
                 val database = getDatabase()
-                val channels = database.channelDao().search("%$query%").first()
+                val dao = database.channelDao()
                 
-                channels.take(10).forEachIndexed { index, channel ->
-                    cursor.addRow(arrayOf(
-                        index.toLong(),
-                        channel.name,
-                        channel.categories.takeIf { it.isNotBlank() } ?: "TV",
-                        channel.iconUrl ?: "",
-                        "aethertv://channel/${channel.infohash}",
-                        "android.intent.action.VIEW"
-                    ))
+                // Use runBlocking only on the background thread, not the binder thread
+                @Suppress("BlockingMethodInNonBlockingContext")
+                val channels: List<ChannelEntity>? = runBlocking {
+                    withTimeoutOrNull<List<ChannelEntity>?>(QUERY_TIMEOUT_MS) {
+                        dao.search("%$query%").firstOrNull()
+                    }
+                }
+                
+                if (channels != null) {
+                    results.addAll(channels.take(10))
                 }
             } catch (e: Exception) {
-                // Return empty cursor on error
+                Log.e(TAG, "Search query failed", e)
+            } finally {
+                latch.countDown()
             }
+        }
+        
+        // Wait with timeout to avoid blocking the binder thread forever
+        try {
+            latch.await(QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: InterruptedException) {
+            Log.w(TAG, "Search query interrupted")
+        }
+        
+        // Build cursor from results
+        results.forEachIndexed { index, channel ->
+            cursor.addRow(arrayOf<Any>(
+                index.toLong(),
+                channel.name,
+                channel.categories.takeIf { it.isNotBlank() } ?: "TV",
+                channel.iconUrl ?: "",
+                "aethertv://channel/${channel.infohash}",
+                "android.intent.action.VIEW"
+            ))
         }
         
         return cursor

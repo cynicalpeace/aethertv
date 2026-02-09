@@ -68,6 +68,27 @@ private val liveColor = Color(0xFFE63946)
 private val cardBg = Color(0xFF1A1A1A)
 private val cardBgFocused = Color(0xFF2A3A4A)
 
+// Pre-created gradient brush for live program progress bars (C11 fix)
+// Avoids creating new Brush objects on every recomposition
+private val liveProgressGradient = Brush.horizontalGradient(
+    colors = listOf(liveColor, accentColor),
+)
+
+// Shared time formatter for Guide screen (H19 fix)
+// SimpleDateFormat is NOT thread-safe, so we use ThreadLocal for composable contexts
+// Uses Locale.ROOT for consistent formatting across all locales (M27 fix)
+private val guideTimeFormatter = ThreadLocal.withInitial {
+    SimpleDateFormat("HH:mm", Locale.ROOT)
+}
+
+/**
+ * Safe accessor for guide time formatter.
+ * Returns a new formatter if ThreadLocal returns null (H26 fix).
+ */
+private fun getGuideTimeFormatter(): SimpleDateFormat {
+    return guideTimeFormatter.get() ?: SimpleDateFormat("HH:mm", Locale.ROOT)
+}
+
 @Composable
 fun GuideScreen(
     onNavigateToPlayer: (String) -> Unit,
@@ -85,9 +106,14 @@ fun GuideScreen(
         }
     }
 
+    // Request focus with error handling (H28 fix)
     LaunchedEffect(Unit) {
         delay(300)
-        focusRequester.requestFocus()
+        try {
+            focusRequester.requestFocus()
+        } catch (e: IllegalStateException) {
+            // FocusRequester not attached yet - this is OK, focus will be gained on interaction
+        }
     }
 
     Box(
@@ -208,7 +234,8 @@ private fun GuideContent(
     onProgramFocus: (EpgProgram) -> Unit,
 ) {
     val channelListState = rememberLazyListState()
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    // Use shared formatter with safe accessor (H19, H26 fix)
+    val timeFormatter = getGuideTimeFormatter()
 
     // Generate time slots (30-min increments)
     val timeSlots = remember(uiState.timelineStart, uiState.timelineEnd) {
@@ -515,7 +542,7 @@ private fun ProgramCard(
                 }
             }
 
-            // Progress bar for live
+            // Progress bar for live (using pre-created gradient - C11 fix)
             if (isLive) {
                 Box(
                     modifier = Modifier
@@ -527,12 +554,7 @@ private fun ProgramCard(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .fillMaxHeight()
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(liveColor, accentColor),
-                                ),
-                                RoundedCornerShape(2.dp),
-                            ),
+                            .background(liveProgressGradient, RoundedCornerShape(2.dp)),
                     )
                 }
             }
@@ -545,7 +567,8 @@ private fun ProgramDetailPanel(
     program: EpgProgram,
     modifier: Modifier = Modifier,
 ) {
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    // Use shared formatter with safe accessor (H19, H26 fix)
+    val timeFormatter = getGuideTimeFormatter()
 
     Box(
         modifier = modifier

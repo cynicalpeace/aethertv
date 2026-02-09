@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +29,9 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.aethertv.domain.model.Channel
 import com.aethertv.domain.model.EpgProgram
+
+// Static empty lambda to avoid allocation on every recomposition (H31 fix)
+private val EmptyLongClick: () -> Unit = {}
 
 @Composable
 fun ChannelCard(
@@ -40,12 +45,25 @@ fun ChannelCard(
     val hasEpg = currentProgram != null
     val cardHeight = if (hasEpg) 140.dp else 120.dp
 
+    // Build accessibility description
+    val statusDesc = when {
+        channel.isVerified == null -> "not verified"
+        channel.isVerified == false -> "offline"
+        (channel.verifiedPeerCount ?: 0) < 5 -> "low peers"
+        else -> "online"
+    }
+    val qualityDesc = channel.verifiedQuality?.label ?: ""
+    val favoriteDesc = if (channel.isFavorite) ", favorite" else ""
+    val programDesc = currentProgram?.let { ", now playing ${it.title}" } ?: ""
+    val accessibilityDesc = "${channel.name}, $statusDesc $qualityDesc$favoriteDesc$programDesc. Press to play, long press for options."
+
     Card(
         onClick = onClick,
-        onLongClick = onLongClick ?: {},
+        onLongClick = onLongClick ?: EmptyLongClick,  // Use static lambda (H31 fix)
         modifier = modifier
             .width(180.dp)
-            .height(cardHeight),
+            .height(cardHeight)
+            .semantics { contentDescription = accessibilityDesc },
         border = CardDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),

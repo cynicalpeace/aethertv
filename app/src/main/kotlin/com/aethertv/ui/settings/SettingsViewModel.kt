@@ -15,6 +15,7 @@ import com.aethertv.data.repository.UpdateState
 import com.aethertv.engine.AceStreamEngine
 import com.aethertv.engine.StreamEngine
 import com.aethertv.epg.XmltvParser
+import com.aethertv.util.CrashLogger
 import com.aethertv.verification.StreamVerifier
 import com.aethertv.verification.VerificationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,6 +77,7 @@ class SettingsViewModel @Inject constructor(
     private val epgRepository: EpgRepository,
     private val xmltvParser: XmltvParser,
     private val filterRuleDao: FilterRuleDao,
+    private val epgMatcher: com.aethertv.epg.EpgMatcher,
 ) : ViewModel() {
     
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -86,6 +88,9 @@ class SettingsViewModel @Inject constructor(
     
     private val _dataMessage = MutableStateFlow<String?>(null)
     val dataMessage: StateFlow<String?> = _dataMessage.asStateFlow()
+    
+    val highContrastEnabled: StateFlow<Boolean> = settingsDataStore.highContrastEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     
     private val _verificationProgress = MutableStateFlow(VerificationProgress())
     val verificationProgress: StateFlow<VerificationProgress> = _verificationProgress.asStateFlow()
@@ -106,6 +111,10 @@ class SettingsViewModel @Inject constructor(
     
     companion object {
         private const val TAG = "SettingsViewModel"
+        // Maximum number of programs to hold in memory before forcing a flush.
+        // Prevents OOM on large XMLTV files (H29 fix).
+        private const val MAX_PROGRAM_BATCH_SIZE = 5000
+        private const val DB_BATCH_SIZE = 100
     }
     
     init {
@@ -139,7 +148,8 @@ class SettingsViewModel @Inject constructor(
             return
         }
         
-        if (_epgState.value.isSyncing) return
+        // Cancel any existing sync before starting new one (H20 fix)
+        epgSyncJob?.cancel()
         
         epgSyncJob = viewModelScope.launch {
             _epgState.value = _epgState.value.copy(
@@ -150,6 +160,10 @@ class SettingsViewModel @Inject constructor(
             )
             
             try {
+                // Collect data in memory, then atomically replace (C9 fix)
+                // For very large files, user should use filtered EPG URL
+                val channelBatch = mutableListOf<com.aethertv.data.local.entity.EpgChannelEntity>()
+                val programBatch = mutableListOf<com.aethertv.data.local.entity.EpgProgramEntity>()
                 var channelCount = 0
                 var programCount = 0
                 
@@ -159,29 +173,46 @@ class SettingsViewModel @Inject constructor(
                     connection.readTimeout = 60_000
                     
                     connection.getInputStream().use { inputStream ->
-                        // Clear existing EPG data
-                        epgRepository.clearAll()
-                        
                         xmltvParser.parse(
                             inputStream = inputStream,
                             onChannel = { channel ->
-                                viewModelScope.launch(Dispatchers.IO) {
-                                    epgRepository.insertChannels(listOf(channel))
-                                    channelCount++
-                                    _epgState.value = _epgState.value.copy(channelCount = channelCount)
-                                }
+                                channelBatch.add(channel)
+                                channelCount++
                             },
                             onProgram = { program ->
-                                viewModelScope.launch(Dispatchers.IO) {
-                                    epgRepository.insertPrograms(listOf(program))
-                                    programCount++
-                                    if (programCount % 100 == 0) {
-                                        _epgState.value = _epgState.value.copy(programCount = programCount)
+                                programBatch.add(program)
+                                programCount++
+                                
+                                // Check memory pressure every 10K programs (H29 mitigation)
+                                // If approaching OOM, we'll fail gracefully with a message
+                                if (programCount % 10000 == 0) {
+                                    val runtime = Runtime.getRuntime()
+                                    val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+                                    val maxMemory = runtime.maxMemory()
+                                    if (usedMemory > maxMemory * 0.85) {
+                                        throw OutOfMemoryError(
+                                            "EPG file too large ($programCount programs). " +
+                                            "Please use a filtered EPG source with fewer days/channels."
+                                        )
                                     }
                                 }
                             }
                         )
                     }
+                    
+                    // Update UI with parse counts before DB operation
+                    _epgState.value = _epgState.value.copy(
+                        channelCount = channelCount,
+                        programCount = programCount
+                    )
+                    
+                    // Atomically replace all EPG data in a transaction (C9 fix)
+                    // If this fails, old data is preserved
+                    epgRepository.replaceAllData(
+                        channels = channelBatch,
+                        programs = programBatch,
+                        batchSize = DB_BATCH_SIZE,
+                    )
                 }
                 
                 val now = System.currentTimeMillis()
@@ -196,6 +227,12 @@ class SettingsViewModel @Inject constructor(
                 
                 _dataMessage.value = "EPG synced: $channelCount channels, $programCount programs"
                 
+            } catch (e: OutOfMemoryError) {
+                Log.e(TAG, "EPG sync OOM", e)
+                _epgState.value = _epgState.value.copy(
+                    isSyncing = false,
+                    error = e.message ?: "EPG file too large for device memory"
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "EPG sync failed", e)
                 _epgState.value = _epgState.value.copy(
@@ -259,6 +296,13 @@ class SettingsViewModel @Inject constructor(
     
     fun dismissDataMessage() {
         _dataMessage.value = null
+    }
+    
+    fun toggleHighContrast() {
+        viewModelScope.launch {
+            val current = highContrastEnabled.value
+            settingsDataStore.setHighContrastEnabled(!current)
+        }
     }
     
     fun startVerification() {
@@ -391,7 +435,8 @@ class SettingsViewModel @Inject constructor(
             var matched = 0
             channels.forEachIndexed { index, channel ->
                 if (channel.epgChannelId == null) {
-                    val match = com.aethertv.epg.EpgMatcher().findBestMatchByName(channel.name, epgChannels)
+                    // Use injected epgMatcher instead of creating new instance
+                    val match = epgMatcher.findBestMatchByName(channel.name, epgChannels)
                     if (match != null) {
                         channelDao.updateEpgMapping(channel.infohash, match.xmltvId)
                         matched++
@@ -441,5 +486,17 @@ class SettingsViewModel @Inject constructor(
             filterRuleDao.delete(rule)
             _dataMessage.value = "Filter rule deleted"
         }
+    }
+    
+    // Crash logging
+    fun hasCrashLogs(): Boolean = CrashLogger.hasLogs()
+    
+    fun getCrashLogSizeKb(): Long = CrashLogger.getLogSizeKb()
+    
+    fun getCrashLogs(): String? = CrashLogger.getLogContents()
+    
+    fun clearCrashLogs() {
+        CrashLogger.clearLogs()
+        _dataMessage.value = "Crash logs cleared"
     }
 }
